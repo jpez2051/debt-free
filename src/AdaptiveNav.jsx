@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { BarChart3, Home, Menu, Target, WalletCards, X } from 'lucide-react'
 
 const groups = [
@@ -36,7 +37,7 @@ export default function AdaptiveNav(){
     setOpen(open===group.id?null:group.id)
   }
 
-  return <>
+  const navLayer=<>
     {open&&<div className="mobile-nav-scrim" onClick={()=>setOpen(null)}/>} 
     {open&&<section className="mobile-nav-sheet" aria-label={`${groups.find(g=>g.id===open)?.label} navigation`}>
       <div className="mobile-nav-sheet-head"><strong>{groups.find(g=>g.id===open)?.label}</strong><button type="button" onClick={()=>setOpen(null)} aria-label="Close"><X size={18}/></button></div>
@@ -46,4 +47,6 @@ export default function AdaptiveNav(){
       {groups.map(group=>{const Icon=group.icon;return <button type="button" key={group.id} className={active===group.id?'active':''} onClick={()=>chooseGroup(group)}><Icon size={20}/><span>{group.label}</span></button>})}
     </nav>
   </>
+
+  return createPortal(navLayer,document.body)
 }
