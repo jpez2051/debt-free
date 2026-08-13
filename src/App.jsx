@@ -1,95 +1,52 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, Check, CreditCard, Gauge, Plus, ShieldCheck, Sparkles, Target, Trash2, WalletCards, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, CreditCard, Download, Gauge, Pencil, Plus, RotateCcw, ShieldCheck, Sparkles, Target, Trash2, WalletCards, X } from 'lucide-react'
 
+const VERSION = '0.2.0'
 const starterDebts = [
   { id: crypto.randomUUID(), name: 'Credit Card', balance: 4200, apr: 24.99, minimum: 135 },
   { id: crypto.randomUUID(), name: 'Car Loan', balance: 11800, apr: 6.49, minimum: 360 },
   { id: crypto.randomUUID(), name: 'Student Loan', balance: 17400, apr: 4.75, minimum: 210 },
 ]
-
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback } }
 
-function loadDebts() {
-  try { return JSON.parse(localStorage.getItem('debt-free-debts')) || starterDebts } catch { return starterDebts }
-}
-
-function monthsToPayoff(debts, extra, strategy) {
-  let items = debts.map(d => ({ ...d }))
-  let months = 0
-  let interest = 0
-  while (items.some(d => d.balance > 0.01) && months < 1200) {
+function simulate(debts, extra, strategy) {
+  let items = debts.map(d => ({ ...d })), months = 0, interest = 0, timeline = []
+  while (items.some(d => d.balance > .01) && months < 1200) {
     months++
-    for (const d of items) {
-      if (d.balance <= 0) continue
-      const monthlyInterest = d.balance * (d.apr / 100 / 12)
-      d.balance += monthlyInterest
-      interest += monthlyInterest
-    }
-    let budget = items.reduce((sum, d) => sum + (d.balance > 0 ? Math.min(d.minimum, d.balance) : 0), 0) + Number(extra || 0)
-    for (const d of items) {
-      if (d.balance <= 0) continue
-      const p = Math.min(d.minimum, d.balance, budget)
-      d.balance -= p
-      budget -= p
-    }
-    const open = items.filter(d => d.balance > 0).sort((a,b) => strategy === 'avalanche' ? b.apr-a.apr : a.balance-b.balance)
-    for (const d of open) {
-      if (budget <= 0) break
-      const p = Math.min(budget, d.balance)
-      d.balance -= p
-      budget -= p
-    }
+    for (const d of items) if (d.balance > 0) { const i=d.balance*(d.apr/100/12); d.balance+=i; interest+=i }
+    let budget=items.reduce((s,d)=>s+(d.balance>0?Math.min(d.minimum,d.balance):0),0)+Number(extra||0)
+    for (const d of items) if(d.balance>0){const p=Math.min(d.minimum,d.balance,budget);d.balance-=p;budget-=p}
+    const open=items.filter(d=>d.balance>0).sort((a,b)=>strategy==='avalanche'?b.apr-a.apr:a.balance-b.balance)
+    for(const d of open){if(budget<=0)break;const p=Math.min(budget,d.balance);d.balance-=p;budget-=p}
+    timeline.push(items.reduce((s,d)=>s+Math.max(0,d.balance),0))
   }
-  return { months, interest }
+  return { months, interest, timeline }
 }
 
-export default function App() {
-  const [debts, setDebts] = useState(loadDebts)
-  const [strategy, setStrategy] = useState('avalanche')
-  const [extra, setExtra] = useState(250)
-  const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ name:'', balance:'', apr:'', minimum:'' })
-
-  const save = next => { setDebts(next); localStorage.setItem('debt-free-debts', JSON.stringify(next)) }
-  const total = debts.reduce((s,d) => s + Number(d.balance), 0)
-  const minimums = debts.reduce((s,d) => s + Number(d.minimum), 0)
-  const plan = useMemo(() => monthsToPayoff(debts, extra, strategy), [debts, extra, strategy])
-  const alt = useMemo(() => monthsToPayoff(debts, extra, strategy === 'avalanche' ? 'snowball' : 'avalanche'), [debts, extra, strategy])
-  const ordered = [...debts].sort((a,b) => strategy === 'avalanche' ? b.apr-a.apr : a.balance-b.balance)
-  const payoffDate = new Date(); payoffDate.setMonth(payoffDate.getMonth() + plan.months)
-
-  const addDebt = e => {
-    e.preventDefault()
-    if (!form.name || !form.balance || !form.minimum) return
-    save([...debts, { id: crypto.randomUUID(), name:form.name, balance:Number(form.balance), apr:Number(form.apr || 0), minimum:Number(form.minimum) }])
-    setForm({ name:'', balance:'', apr:'', minimum:'' }); setShowAdd(false)
-  }
-
-  return <div className="app">
-    <header><div className="brand"><div className="mark"><Target size={22}/></div><div><strong>Debt Free</strong><span>Own your finish line.</span></div></div><div className="privacy"><ShieldCheck size={16}/> Your data stays on this device</div></header>
-    <main>
-      <section className="hero"><div><div className="eyebrow"><Sparkles size={14}/> YOUR PAYOFF COMMAND CENTER</div><h1>Make debt feel<br/><em>finite.</em></h1><p>See every balance, choose your strategy, and turn your monthly effort into a date you can circle.</p></div><div className="freedom-card"><span>Projected debt-free date</span><strong>{payoffDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</strong><div className="line"><span>{plan.months} months to go</span><span>{money.format(plan.interest)} est. interest</span></div></div></section>
-
-      <section className="stats">
-        <div><span>Total debt</span><strong>{money.format(total)}</strong><small>Across {debts.length} account{debts.length===1?'':'s'}</small></div>
-        <div><span>Monthly plan</span><strong>{money.format(minimums + Number(extra || 0))}</strong><small>{money.format(minimums)} minimums + extra</small></div>
-        <div><span>Strategy</span><strong className="capitalize">{strategy}</strong><small>{strategy==='avalanche'?'Highest APR first':'Smallest balance first'}</small></div>
-      </section>
-
-      <section className="grid">
-        <div className="panel debts-panel"><div className="panel-head"><div><span className="kicker">YOUR DEBTS</span><h2>Payoff queue</h2></div><button className="primary" onClick={()=>setShowAdd(true)}><Plus size={17}/> Add debt</button></div>
-          {ordered.length === 0 ? <div className="empty"><WalletCards/><h3>No debts added</h3><p>Add an account to build your payoff plan.</p></div> : ordered.map((d,i)=><div className="debt" key={d.id}><div className="rank">{i+1}</div><div className="debt-main"><div className="debt-title"><strong>{d.name}</strong><span>{d.apr}% APR</span></div><div className="bar"><i style={{width:`${Math.max(8,(d.balance/Math.max(...debts.map(x=>x.balance)))*100)}%`}}/></div><div className="debt-meta"><span>{money.format(d.balance)} balance</span><span>{money.format(d.minimum)}/mo minimum</span></div></div><button className="icon" aria-label="Delete debt" onClick={()=>save(debts.filter(x=>x.id!==d.id))}><Trash2 size={16}/></button></div>)}
-        </div>
-
-        <aside>
-          <div className="panel strategy"><span className="kicker">PAYOFF METHOD</span><h2>Choose your attack</h2><button className={strategy==='avalanche'?'choice active':'choice'} onClick={()=>setStrategy('avalanche')}><div><ArrowDown/><strong>Avalanche</strong></div><span>Highest interest first</span>{strategy==='avalanche'&&<Check/>}</button><button className={strategy==='snowball'?'choice active':'choice'} onClick={()=>setStrategy('snowball')}><div><ArrowUp/><strong>Snowball</strong></div><span>Smallest balance first</span>{strategy==='snowball'&&<Check/>}</button>
-            <div className="extra"><label htmlFor="extra">Extra payment each month</label><div className="money-input"><span>$</span><input id="extra" type="number" min="0" value={extra} onChange={e=>setExtra(e.target.value)}/></div><small>Added on top of all minimum payments.</small></div>
-          </div>
-          <div className="panel insight"><div className="insight-icon"><Gauge/></div><div><span className="kicker">PLAN INSIGHT</span><p>{plan.interest <= alt.interest ? `This plan saves about ${money.format(Math.max(0,alt.interest-plan.interest))} in interest versus the alternative.` : `The alternative could save about ${money.format(plan.interest-alt.interest)} in interest.`}</p></div></div>
-        </aside>
-      </section>
-    </main>
-
-    {showAdd && <div className="modal-backdrop" onMouseDown={()=>setShowAdd(false)}><form className="modal" onSubmit={addDebt} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setShowAdd(false)}><X/></button><span className="kicker">NEW ACCOUNT</span><h2>Add a debt</h2><p>Enter the current numbers from your latest statement.</p><label>Account name<input autoFocus value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Visa card"/></label><div className="form-row"><label>Balance<input type="number" min="0" step=".01" value={form.balance} onChange={e=>setForm({...form,balance:e.target.value})} placeholder="0.00"/></label><label>APR %<input type="number" min="0" step=".01" value={form.apr} onChange={e=>setForm({...form,apr:e.target.value})} placeholder="0.00"/></label></div><label>Minimum monthly payment<input type="number" min="0" step=".01" value={form.minimum} onChange={e=>setForm({...form,minimum:e.target.value})} placeholder="0.00"/></label><button className="primary submit"><CreditCard size={17}/> Add to my plan</button></form></div>}
-  </div>
+export default function App(){
+ const [debts,setDebts]=useState(()=>load('debt-free-debts',starterDebts)); const [payments,setPayments]=useState(()=>load('debt-free-payments',[]));
+ const [strategy,setStrategy]=useState(()=>localStorage.getItem('debt-free-strategy')||'avalanche'); const [extra,setExtraState]=useState(()=>Number(localStorage.getItem('debt-free-extra')??250));
+ const [modal,setModal]=useState(null); const [form,setForm]=useState({name:'',balance:'',apr:'',minimum:''}); const [payment,setPayment]=useState({debtId:'',amount:''})
+ const saveDebts=n=>{setDebts(n);localStorage.setItem('debt-free-debts',JSON.stringify(n))}; const setExtra=v=>{setExtraState(v);localStorage.setItem('debt-free-extra',v)}
+ const choose=s=>{setStrategy(s);localStorage.setItem('debt-free-strategy',s)}; const total=debts.reduce((s,d)=>s+Number(d.balance),0); const minimums=debts.reduce((s,d)=>s+Number(d.minimum),0)
+ const plan=useMemo(()=>simulate(debts,extra,strategy),[debts,extra,strategy]); const alt=useMemo(()=>simulate(debts,extra,strategy==='avalanche'?'snowball':'avalanche'),[debts,extra,strategy]);
+ const ordered=[...debts].sort((a,b)=>strategy==='avalanche'?b.apr-a.apr:a.balance-b.balance); const payoffDate=new Date(); payoffDate.setMonth(payoffDate.getMonth()+plan.months)
+ const openAdd=()=>{setForm({name:'',balance:'',apr:'',minimum:''});setModal('debt')}; const openEdit=d=>{setForm({...d});setModal('debt')}
+ const submitDebt=e=>{e.preventDefault();if(!form.name||!form.balance||!form.minimum)return;const item={id:form.id||crypto.randomUUID(),name:form.name,balance:Number(form.balance),apr:Number(form.apr||0),minimum:Number(form.minimum)};saveDebts(form.id?debts.map(d=>d.id===form.id?item:d):[...debts,item]);setModal(null)}
+ const submitPayment=e=>{e.preventDefault();const amount=Number(payment.amount), d=debts.find(x=>x.id===payment.debtId);if(!d||!amount)return;saveDebts(debts.map(x=>x.id===d.id?{...x,balance:Math.max(0,x.balance-amount)}:x));const next=[{id:crypto.randomUUID(),debtId:d.id,debtName:d.name,amount,date:new Date().toISOString()},...payments];setPayments(next);localStorage.setItem('debt-free-payments',JSON.stringify(next));setPayment({debtId:'',amount:''});setModal(null)}
+ const exportData=()=>{const blob=new Blob([JSON.stringify({version:VERSION,exportedAt:new Date().toISOString(),debts,payments,strategy,extra},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`debt-free-backup-v${VERSION}.json`;a.click();URL.revokeObjectURL(a.href)}
+ const reset=()=>{if(confirm('Reset Debt Free and remove all saved debts and payments from this device?')){localStorage.clear();saveDebts([]);setPayments([])}}
+ return <div className="app"><header><div className="brand"><div className="mark"><Target size={22}/></div><div><strong>Debt Free</strong><span>Own your finish line. · v{VERSION}</span></div></div><div className="privacy"><ShieldCheck size={16}/> Your data stays on this device</div></header><main>
+ <section className="hero"><div><div className="eyebrow"><Sparkles size={14}/> YOUR PAYOFF COMMAND CENTER</div><h1>Make debt feel<br/><em>finite.</em></h1><p>See every balance, choose your strategy, record real payments, and turn your monthly effort into a date you can circle.</p></div><div className="freedom-card"><span>Projected debt-free date</span><strong>{debts.length?payoffDate.toLocaleDateString('en-US',{month:'long',year:'numeric'}):'Add your first debt'}</strong><div className="line"><span>{plan.months} months to go</span><span>{money.format(plan.interest)} est. interest</span></div></div></section>
+ <section className="stats"><div><span>Total debt</span><strong>{money.format(total)}</strong><small>Across {debts.length} account{debts.length===1?'':'s'}</small></div><div><span>Monthly plan</span><strong>{money.format(minimums+Number(extra||0))}</strong><small>{money.format(minimums)} minimums + extra</small></div><div><span>Payments logged</span><strong>{payments.length}</strong><small>{money.format(payments.reduce((s,p)=>s+p.amount,0))} recorded</small></div></section>
+ <section className="grid"><div className="panel debts-panel"><div className="panel-head"><div><span className="kicker">YOUR DEBTS</span><h2>Payoff queue</h2></div><div className="actions"><button className="secondary" onClick={()=>setModal('payment')} disabled={!debts.length}>Log payment</button><button className="primary" onClick={openAdd}><Plus size={17}/> Add debt</button></div></div>
+ {ordered.length===0?<div className="empty"><WalletCards/><h3>Your clean slate</h3><p>Add an account to build your personalized payoff plan.</p></div>:ordered.map((d,i)=><div className="debt" key={d.id}><div className="rank">{i+1}</div><div className="debt-main"><div className="debt-title"><strong>{d.name}</strong><span>{d.apr}% APR</span></div><div className="bar"><i style={{width:`${Math.max(8,(d.balance/Math.max(...debts.map(x=>x.balance)))*100)}%`}}/></div><div className="debt-meta"><span>{money.format(d.balance)} balance</span><span>{money.format(d.minimum)}/mo minimum</span></div></div><button className="icon" onClick={()=>openEdit(d)} aria-label="Edit debt"><Pencil size={15}/></button><button className="icon" onClick={()=>saveDebts(debts.filter(x=>x.id!==d.id))} aria-label="Delete debt"><Trash2 size={15}/></button></div>)}
+ {payments.length>0&&<div className="history"><span className="kicker">RECENT PAYMENTS</span>{payments.slice(0,3).map(p=><div className="history-row" key={p.id}><span>{p.debtName}<small>{new Date(p.date).toLocaleDateString()}</small></span><strong>-{money.format(p.amount)}</strong></div>)}</div>}</div>
+ <aside><div className="panel strategy"><span className="kicker">PAYOFF METHOD</span><h2>Choose your attack</h2><button className={strategy==='avalanche'?'choice active':'choice'} onClick={()=>choose('avalanche')}><div><ArrowDown/><strong>Avalanche</strong></div><span>Highest interest first</span>{strategy==='avalanche'&&<Check/>}</button><button className={strategy==='snowball'?'choice active':'choice'} onClick={()=>choose('snowball')}><div><ArrowUp/><strong>Snowball</strong></div><span>Smallest balance first</span>{strategy==='snowball'&&<Check/>}</button><div className="extra"><label>Extra payment each month</label><div className="money-input"><span>$</span><input type="number" min="0" value={extra} onChange={e=>setExtra(e.target.value)}/></div><small>Added on top of all minimum payments.</small></div></div>
+ <div className="panel insight"><div className="insight-icon"><Gauge/></div><div><span className="kicker">PLAN INSIGHT</span><p>{plan.interest<=alt.interest?`This plan saves about ${money.format(Math.max(0,alt.interest-plan.interest))} in interest versus the alternative.`:`The alternative could save about ${money.format(plan.interest-alt.interest)} in interest.`}</p></div></div>
+ <div className="panel tools"><span className="kicker">YOUR DATA</span><button className="tool-btn" onClick={exportData}><Download size={16}/> Export backup</button><button className="tool-btn danger" onClick={reset}><RotateCcw size={16}/> Start fresh</button></div></aside></section></main>
+ {modal==='debt'&&<div className="modal-backdrop" onMouseDown={()=>setModal(null)}><form className="modal" onSubmit={submitDebt} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setModal(null)}><X/></button><span className="kicker">{form.id?'EDIT ACCOUNT':'NEW ACCOUNT'}</span><h2>{form.id?'Update debt':'Add a debt'}</h2><p>Use the numbers from your latest statement.</p><label>Account name<input autoFocus value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><div className="form-row"><label>Balance<input type="number" min="0" step=".01" value={form.balance} onChange={e=>setForm({...form,balance:e.target.value})}/></label><label>APR %<input type="number" min="0" step=".01" value={form.apr} onChange={e=>setForm({...form,apr:e.target.value})}/></label></div><label>Minimum monthly payment<input type="number" min="0" step=".01" value={form.minimum} onChange={e=>setForm({...form,minimum:e.target.value})}/></label><button className="primary submit"><CreditCard size={17}/>{form.id?'Save changes':'Add to my plan'}</button></form></div>}
+ {modal==='payment'&&<div className="modal-backdrop" onMouseDown={()=>setModal(null)}><form className="modal" onSubmit={submitPayment} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setModal(null)}><X/></button><span className="kicker">PROGRESS</span><h2>Log a payment</h2><p>Recording payments updates your balance and payoff projection.</p><label>Debt<select value={payment.debtId} onChange={e=>setPayment({...payment,debtId:e.target.value})}><option value="">Choose an account</option>{debts.map(d=><option value={d.id} key={d.id}>{d.name} — {money.format(d.balance)}</option>)}</select></label><label>Payment amount<input type="number" min="0.01" step=".01" value={payment.amount} onChange={e=>setPayment({...payment,amount:e.target.value})}/></label><button className="primary submit">Record payment</button></form></div>}
+ </div>
 }
