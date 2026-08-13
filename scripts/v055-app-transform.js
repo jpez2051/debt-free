@@ -2,6 +2,7 @@ function replaceOrThrow(code,before,after,label){if(!code.includes(before))throw
 
 export function transformAppV055(source){
  let code=source
+ code=replaceOrThrow(code,"import './v054.css'","import './v054.css'\nimport './v055.css'",'v055 styles')
  code=replaceOrThrow(code,"import { ArrowDown, ArrowUp, Banknote, BarChart3, CalendarDays, Check, CreditCard, Home, Lightbulb, Pencil, Plus, ReceiptText, Sparkles, Target, Trash2, TrendingUp, WalletCards, X } from 'lucide-react'","import { ArrowDown, ArrowRightLeft, ArrowUp, Banknote, BarChart3, CalendarDays, Check, CreditCard, Home, Lightbulb, Pencil, Plus, ReceiptText, Sparkles, Target, Trash2, TrendingUp, WalletCards, X } from 'lucide-react'",'transfer icon import')
  code=replaceOrThrow(code,"const VERSION='0.5.4'","const VERSION='0.5.5'",'version')
  code=replaceOrThrow(code," const purchases=data.transactions.filter(t=>t.kind==='purchase'), incomes=data.transactions.filter(t=>t.kind==='income')"," const purchases=data.transactions.filter(t=>t.kind==='purchase'), incomes=data.transactions.filter(t=>t.kind==='income'), transfers=data.transactions.filter(t=>t.kind==='transfer')",'transfer collection')
