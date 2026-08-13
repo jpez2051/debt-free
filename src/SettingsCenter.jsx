@@ -1,0 +1,55 @@
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Check, Cloud, Download, HardDrive, MonitorCog, Settings, ShieldCheck, Upload, X } from 'lucide-react'
+import { BACKUP_SCHEMA, RELEASE_VERSION, STORAGE_KEY } from './release.js'
+
+function readStoredData(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') } catch { return null }
+}
+function validateData(data){ return Boolean(data && typeof data==='object' && Array.isArray(data.accounts) && Array.isArray(data.transactions) && Array.isArray(data.payments) && Array.isArray(data.bills)) }
+function downloadJson(payload, filename){
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}), url=URL.createObjectURL(blob), a=document.createElement('a')
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)
+}
+function backupPayload(data){ return {schema:BACKUP_SCHEMA,app:'Debt Free',version:RELEASE_VERSION,exportedAt:new Date().toISOString(),data} }
+
+export default function SettingsCenter(){
+  const [open,setOpen]=useState(false), [message,setMessage]=useState(''), [navTarget,setNavTarget]=useState(null)
+  const [theme,setTheme]=useState(()=>localStorage.getItem('debt-free-theme')||'default')
+  const inputRef=useRef(null), data=readStoredData()
+  const counts={accounts:data?.accounts?.length||0,activity:data?.transactions?.length||0,payments:data?.payments?.length||0,bills:data?.bills?.length||0}
+
+  useEffect(()=>setNavTarget(document.querySelector('.sidebar nav')),[])
+  useEffect(()=>{document.documentElement.dataset.debtTheme=theme;localStorage.setItem('debt-free-theme',theme)},[theme])
+
+  const exportBackup=()=>{
+    const current=readStoredData();if(!validateData(current)){setMessage('There is no valid Debt Free data to back up yet.');return}
+    const stamp=new Date().toISOString().slice(0,10);downloadJson(backupPayload(current),`debt-free-backup-v${RELEASE_VERSION}-${stamp}.json`)
+    localStorage.setItem('debt-free-last-backup',new Date().toISOString());setMessage('Backup downloaded successfully.')
+  }
+  const restoreBackup=async e=>{
+    const file=e.target.files?.[0];e.target.value='';if(!file)return
+    try{
+      const parsed=JSON.parse(await file.text()), incoming=parsed?.schema===BACKUP_SCHEMA?parsed.data:parsed?.data||parsed
+      if(!validateData(incoming))throw new Error('invalid')
+      const current=readStoredData();if(validateData(current)){const stamp=new Date().toISOString().replace(/[:.]/g,'-');downloadJson(backupPayload(current),`debt-free-pre-restore-${stamp}.json`)}
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(incoming));localStorage.setItem('debt-free-last-restore',new Date().toISOString());window.location.reload()
+    }catch{setMessage('That file does not look like a valid Debt Free backup. Nothing was changed.')}
+  }
+  const lastBackup=localStorage.getItem('debt-free-last-backup')
+  const navButton=<button className="nav settings-nav" type="button" onClick={()=>setOpen(true)}><Settings size={17}/>Settings</button>
+
+  return <>
+    {navTarget&&createPortal(navButton,navTarget)}
+    {open&&<div className="settings-backdrop" onMouseDown={()=>setOpen(false)}><section className="settings-panel" onMouseDown={e=>e.stopPropagation()}>
+      <button className="settings-close" type="button" onClick={()=>setOpen(false)} aria-label="Close settings"><X size={18}/></button>
+      <div className="settings-heading"><div className="settings-icon"><Settings size={22}/></div><div><span className="kicker">SETTINGS</span><h2>Debt Free</h2><p>Version {RELEASE_VERSION}</p></div></div>
+
+      <div className="settings-section"><div className="settings-section-title"><Cloud size={18}/><div><strong>Account & sync</strong><span>Cloud accounts are planned for Firebase.</span></div></div><div className="settings-status"><span>Current storage</span><strong><HardDrive size={15}/> This browser only</strong></div><p>Your financial records currently stay on this device. When cloud sync is introduced, this section will become the home for sign-in, sync status and account management.</p></div>
+
+      <div className="settings-section"><div className="settings-section-title"><ShieldCheck size={18}/><div><strong>Data & backup</strong><span>Protect your local financial history.</span></div></div><div className="data-counts"><span><b>{counts.accounts}</b> accounts</span><span><b>{counts.activity}</b> activity</span><span><b>{counts.payments}</b> payments</span><span><b>{counts.bills}</b> bills</span></div><div className="settings-warning"><ShieldCheck size={17}/><span>Clearing browser/site data can erase local records. Keep a recent backup while Debt Free is local-only.</span></div><div className="settings-actions"><button type="button" className="primary" onClick={exportBackup}><Download size={17}/> Download backup</button><button type="button" className="secondary" onClick={()=>inputRef.current?.click()}><Upload size={17}/> Restore backup</button></div><input ref={inputRef} className="hidden-file" type="file" accept="application/json,.json" onChange={restoreBackup}/><small>{lastBackup?`Last backup: ${new Date(lastBackup).toLocaleString()}`:'No backup downloaded from this browser yet.'}</small>{message&&<div className="backup-message">{message}</div>}</div>
+
+      <div className="settings-section"><div className="settings-section-title"><MonitorCog size={18}/><div><strong>Appearance</strong><span>Choose the workspace style.</span></div></div><div className="theme-picker">{[['default','Midnight'],['slate','Slate'],['contrast','High contrast']].map(([id,label])=><button key={id} type="button" className={theme===id?'theme-option active':'theme-option'} onClick={()=>setTheme(id)}><i className={`theme-swatch ${id}`}/><span>{label}</span>{theme===id&&<Check size={15}/>}</button>)}</div></div>
+    </section></div>}
+  </>
+}
