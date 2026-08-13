@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
-const match = appSource.match(/const VERSION = ['"]([^'"]+)['"]/)
+const match = appSource.match(/const\s+VERSION\s*=\s*['"]([^'"]+)['"]/)
 
 if (!match) {
   console.error('Version check failed: src/App.jsx does not declare VERSION.')
