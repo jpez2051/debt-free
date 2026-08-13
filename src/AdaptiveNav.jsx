@@ -32,6 +32,44 @@ export default function AdaptiveNav(){
     return()=>observer.disconnect()
   },[])
 
+  useEffect(()=>{
+    let frame=0
+    const sync=()=>{
+      cancelAnimationFrame(frame)
+      frame=requestAnimationFrame(()=>{
+        const viewport=window.visualViewport
+        const pageTop=viewport?.pageTop ?? window.scrollY
+        const viewportHeight=viewport?.height ?? window.innerHeight
+        const nav=document.querySelector('body>.mobile-primary-nav')
+        if(nav){
+          const navHeight=nav.getBoundingClientRect().height || 72
+          document.documentElement.style.setProperty('--df-mobile-nav-top',`${Math.max(0,pageTop+viewportHeight-navHeight)}px`)
+        }
+        const sheet=document.querySelector('body>.mobile-nav-sheet')
+        if(sheet){
+          const navHeight=nav?.getBoundingClientRect().height || 72
+          const sheetHeight=sheet.getBoundingClientRect().height || 0
+          document.documentElement.style.setProperty('--df-mobile-sheet-top',`${Math.max(pageTop+8,pageTop+viewportHeight-navHeight-sheetHeight-12)}px`)
+        }
+      })
+    }
+    sync()
+    const viewport=window.visualViewport
+    viewport?.addEventListener('scroll',sync)
+    viewport?.addEventListener('resize',sync)
+    window.addEventListener('scroll',sync,{passive:true})
+    window.addEventListener('resize',sync)
+    window.addEventListener('orientationchange',sync)
+    return()=>{
+      cancelAnimationFrame(frame)
+      viewport?.removeEventListener('scroll',sync)
+      viewport?.removeEventListener('resize',sync)
+      window.removeEventListener('scroll',sync)
+      window.removeEventListener('resize',sync)
+      window.removeEventListener('orientationchange',sync)
+    }
+  },[open])
+
   const chooseGroup=group=>{
     if(group.items.length===1){clickSidebar(group.items[0]);setOpen(null);return}
     setOpen(open===group.id?null:group.id)
