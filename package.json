@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "test": "node --test",
+    "verify:version": "node scripts/check-version.js",
     "build": "vite build",
-    "check": "npm test && npm run build",
+    "check": "npm test && npm run verify:version && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {
