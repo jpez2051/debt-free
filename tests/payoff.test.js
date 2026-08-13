@@ -29,6 +29,16 @@ test('extra payments accelerate payoff', () => {
   assert.ok(simulatePayoff(debts, 100).months < simulatePayoff(debts, 0).months)
 })
 
+test('freed minimum payments roll forward after a debt is eliminated', () => {
+  const debts = [
+    { id: 'a', balance: 100, apr: 0, minimum: 100 },
+    { id: 'b', balance: 500, apr: 0, minimum: 100 },
+  ]
+  const result = simulatePayoff(debts, 0, 'snowball')
+  assert.equal(result.months, 3)
+  assert.equal(result.paidOff, true)
+})
+
 test('avalanche does not cost more interest than snowball in representative plan', () => {
   const debts = [
     { id: 'a', balance: 5000, apr: 24, minimum: 150 },
@@ -43,6 +53,12 @@ test('empty plan is immediately paid off', () => {
   const result = simulatePayoff([], 250)
   assert.equal(result.months, 0)
   assert.equal(result.paidOff, true)
+})
+
+test('a plan with no payment budget reports that it cannot pay off', () => {
+  const result = simulatePayoff([{ id: 'a', balance: 100, apr: 10, minimum: 0 }], 0)
+  assert.equal(result.months, 0)
+  assert.equal(result.paidOff, false)
 })
 
 test('projectedDate advances by calendar months', () => {
