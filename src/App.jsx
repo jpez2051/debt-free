@@ -1,208 +1,63 @@
-import { useMemo, useRef, useState } from 'react'
-import {
-  ArrowDown, ArrowUp, Check, CreditCard, Download, Gauge, Pencil, Plus,
-  RotateCcw, ShieldCheck, Sparkles, Target, Trash2, Trophy, Undo2, Upload,
-  WalletCards, X,
-} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, Banknote, BarChart3, Check, CreditCard, Gauge, Home, Lightbulb, List, Plus, ReceiptText, Sparkles, Target, WalletCards, X } from 'lucide-react'
 import { orderDebts, projectedDate, simulatePayoff } from './lib/payoff.js'
 
-const VERSION = '0.3.0'
-const STORAGE = {
-  debts: 'debt-free-debts',
-  payments: 'debt-free-payments',
-  strategy: 'debt-free-strategy',
-  extra: 'debt-free-extra',
+const VERSION = '0.4.0'
+const STORAGE_KEY = 'debt-free-v040'
+const categories = ['Groceries','Dining','Fuel','Shopping','Subscriptions','Entertainment','Utilities','Health','Travel','Other']
+const starter = {
+  accounts: [
+    { id:'checking', name:'Main Checking', type:'checking', balance:4200 },
+    { id:'savings', name:'Savings', type:'savings', balance:8500 },
+    { id:'visa', name:'Visa', type:'credit', balance:3200, apr:24.99, minimum:110, limit:7000 },
+    { id:'mc', name:'Mastercard', type:'credit', balance:1450, apr:18.49, minimum:55, limit:5000 },
+  ],
+  transactions: [
+    { id:'t1', date:new Date().toISOString(), merchant:'Groceries', amount:96.42, category:'Groceries', accountId:'visa', kind:'purchase' },
+    { id:'t2', date:new Date().toISOString(), merchant:'Gas Station', amount:54.10, category:'Fuel', accountId:'checking', kind:'purchase' },
+  ],
+  payments: [], strategy:'avalanche', extra:250,
 }
+const money = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0})
+const money2 = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
+function load(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||starter}catch{return starter}}
+function save(state){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
 
-const starterDebts = [
-  { id: crypto.randomUUID(), name: 'Credit Card', balance: 4200, apr: 24.99, minimum: 135 },
-  { id: crypto.randomUUID(), name: 'Car Loan', balance: 11800, apr: 6.49, minimum: 360 },
-  { id: crypto.randomUUID(), name: 'Student Loan', balance: 17400, apr: 4.75, minimum: 210 },
+const nav = [
+  ['dashboard','Dashboard',Home],['accounts','Accounts',WalletCards],['transactions','Transactions',ReceiptText],['debts','Debts',CreditCard],['payoff','Payoff Plan',Target],['spending','Spending',BarChart3],['insights','Insights',Lightbulb]
 ]
 
-const money = new Intl.NumberFormat('en-US', {
-  style: 'currency', currency: 'USD', maximumFractionDigits: 0,
-})
-
-function loadJson(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback } catch { return fallback }
+export default function App(){
+ const [data,setData]=useState(load); const [page,setPage]=useState('dashboard'); const [modal,setModal]=useState(null); const [form,setForm]=useState({});
+ const update=next=>{setData(next);save(next)}
+ const checking=data.accounts.filter(a=>a.type==='checking'); const cashAccounts=data.accounts.filter(a=>a.type!=='credit'); const cards=data.accounts.filter(a=>a.type==='credit');
+ const cash=cashAccounts.reduce((s,a)=>s+Number(a.balance),0); const cardDebt=cards.reduce((s,a)=>s+Number(a.balance),0); const minimums=cards.reduce((s,a)=>s+Number(a.minimum||0),0)
+ const payoffDebts=cards.map(a=>({id:a.id,name:a.name,balance:a.balance,apr:a.apr||0,minimum:a.minimum||0}))
+ const plan=useMemo(()=>simulatePayoff(payoffDebts,data.extra,data.strategy),[data.accounts,data.extra,data.strategy]); const alt=useMemo(()=>simulatePayoff(payoffDebts,data.extra,data.strategy==='avalanche'?'snowball':'avalanche'),[data.accounts,data.extra,data.strategy]); const payoffDate=plan.paidOff?projectedDate(plan.months):null
+ const spend=data.transactions.filter(t=>t.kind==='purchase').reduce((s,t)=>s+Number(t.amount),0); const byCategory=categories.map(c=>({name:c,total:data.transactions.filter(t=>t.kind==='purchase'&&t.category===c).reduce((s,t)=>s+Number(t.amount),0)})).filter(x=>x.total>0).sort((a,b)=>b.total-a.total)
+ const discretionary=byCategory.filter(x=>['Dining','Shopping','Subscriptions','Entertainment','Travel'].includes(x.name)).reduce((s,x)=>s+x.total,0); const top=byCategory[0]
+ const account=id=>data.accounts.find(a=>a.id===id)
+ const addPurchase=e=>{e.preventDefault();const amount=Number(form.amount),a=account(form.accountId);if(!a||!amount||amount<=0)return;const accounts=data.accounts.map(x=>x.id===a.id?{...x,balance:a.type==='credit'?Number(x.balance)+amount:Number(x.balance)-amount}:x);const tx={id:crypto.randomUUID(),date:new Date().toISOString(),merchant:form.merchant||'Purchase',amount,category:form.category||'Other',accountId:a.id,kind:'purchase'};update({...data,accounts,transactions:[tx,...data.transactions]});setModal(null);setForm({})}
+ const addPayment=e=>{e.preventDefault();const amount=Number(form.amount),card=account(form.cardId),bank=account(form.bankId);if(!card||!bank||card.type!=='credit'||bank.type==='credit'||!amount||amount<=0)return;const actual=Math.min(amount,Number(card.balance));const accounts=data.accounts.map(a=>a.id===card.id?{...a,balance:Math.max(0,Number(a.balance)-actual)}:a.id===bank.id?{...a,balance:Number(a.balance)-actual}:a);const p={id:crypto.randomUUID(),date:new Date().toISOString(),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:actual,kind:'payment'};update({...data,accounts,payments:[p,...data.payments]});setModal(null);setForm({})}
+ const addAccount=e=>{e.preventDefault();if(!form.name)return;const a={id:crypto.randomUUID(),name:form.name,type:form.type||'checking',balance:Number(form.balance||0),apr:Number(form.apr||0),minimum:Number(form.minimum||0),limit:Number(form.limit||0)};update({...data,accounts:[...data.accounts,a]});setModal(null);setForm({})}
+ const choose=s=>{update({...data,strategy:s})}; const setExtra=v=>update({...data,extra:Number(v||0)})
+ return <div className="shell">
+  <aside className="sidebar"><div className="brand"><div className="mark"><Target size={20}/></div><div><strong>Debt Free</strong><span>v{VERSION}</span></div></div><nav>{nav.map(([id,label,Icon])=><button key={id} className={page===id?'nav active':'nav'} onClick={()=>setPage(id)}><Icon size={17}/>{label}</button>)}</nav><div className="side-foot"><Sparkles size={15}/><span>Finance assistant mode</span></div></aside>
+  <div className="workspace"><header><div><span className="kicker">PERSONAL FINANCE OS</span><h1>{nav.find(n=>n[0]===page)?.[1]}</h1></div><div className="header-actions"><button className="secondary" onClick={()=>{setForm({});setModal('purchase')}}><ReceiptText size={16}/> Log purchase</button><button className="primary" onClick={()=>{setForm({bankId:checking[0]?.id||'',cardId:cards[0]?.id||''});setModal('payment')}}><Banknote size={16}/> Card payment</button></div></header><main>
+  {page==='dashboard'&&<><section className="hero-card"><div><span className="kicker">FINANCIAL SNAPSHOT</span><h2>See where you stand. Decide what moves next.</h2><p>Cash, debt, spending and payoff progress in one view.</p></div><div><span>Projected debt-free</span><strong>{payoffDate?payoffDate.toLocaleDateString('en-US',{month:'long',year:'numeric'}):'Needs a plan'}</strong><small>{plan.months} months · {money.format(plan.interest)} projected interest</small></div></section><section className="stats four"><Stat label="Available cash" value={money.format(cash)} note={`${cashAccounts.length} bank account(s)`}/><Stat label="Credit card debt" value={money.format(cardDebt)} note={`${cards.length} card(s)`}/><Stat label="Spending logged" value={money.format(spend)} note={`${data.transactions.length} transaction(s)`}/><Stat label="Monthly debt plan" value={money.format(minimums+data.extra)} note={`${money.format(data.extra)} extra`}/></section><section className="two-col"><Panel title="Recent activity" kicker="MONEY MOVEMENT">{data.transactions.slice(0,5).map(t=><Row key={t.id} left={`${t.merchant} · ${t.category}`} right={`-${money2.format(t.amount)}`} sub={account(t.accountId)?.name}/>)}</Panel><Panel title="Assistant pulse" kicker="WHAT MATTERS NOW"><Insight text={top?`${top.name} is your largest logged spending category at ${money.format(top.total)}.`:'Log purchases to unlock spending insights.'}/><Insight text={discretionary>0?`You have ${money.format(discretionary)} in discretionary spending logged. Redirecting part of that could accelerate debt payoff.`:'No discretionary spending logged yet.'}/><Insight text={cash<minimums*2?'Your cash cushion is tight relative to monthly card minimums.':'Your current cash balance covers more than two months of card minimums.'}/></Panel></section></>}
+  {page==='accounts'&&<PageHead title="Accounts" text="Bank balances and cards are the foundation of your financial picture." action="Add account" onClick={()=>{setForm({type:'checking'});setModal('account')}}>{data.accounts.map(a=><div className="account-card" key={a.id}><div><span>{a.type}</span><strong>{a.name}</strong></div><b>{a.type==='credit'?money.format(a.balance)+' owed':money.format(a.balance)}</b>{a.type==='credit'&&<small>{a.apr}% APR · {money.format(a.minimum)} minimum · {a.limit?Math.round(a.balance/a.limit*100):0}% utilization</small>}</div>)}</PageHead>}
+  {page==='transactions'&&<PageHead title="Transactions" text="Purchases are categorized by where the money came from." action="Log purchase" onClick={()=>{setForm({});setModal('purchase')}}><div className="table-list">{data.transactions.map(t=><Row key={t.id} left={`${t.merchant} · ${t.category}`} right={money2.format(t.amount)} sub={`${new Date(t.date).toLocaleDateString()} · ${account(t.accountId)?.name||'Unknown account'}`}/>)}</div></PageHead>}
+  {page==='debts'&&<PageHead title="Debts" text="Credit cards are tracked separately from spending so payments are never double-counted." action="Log card payment" onClick={()=>{setForm({bankId:checking[0]?.id||'',cardId:cards[0]?.id||''});setModal('payment')}}>{orderDebts(payoffDebts,data.strategy).map((d,i)=><div className="debt-row" key={d.id}><div className="rank">{i+1}</div><div><strong>{d.name}</strong><small>{d.apr}% APR · {money.format(d.minimum)} minimum</small></div><b>{money.format(d.balance)}</b></div>)}<Panel title="Payment history" kicker="TRANSFERS FROM BANK">{data.payments.map(p=><Row key={p.id} left={`${p.bankName} → ${p.cardName}`} right={money2.format(p.amount)} sub={new Date(p.date).toLocaleDateString()}/>)}</Panel></PageHead>}
+  {page==='payoff'&&<><PageHead title="Payoff Plan" text="Compare strategies and see how extra money changes your finish line."/><section className="two-col"><Panel title="Choose your method" kicker="STRATEGY"><button className={data.strategy==='avalanche'?'choice active':'choice'} onClick={()=>choose('avalanche')}><ArrowDown size={16}/> Avalanche <span>Highest APR first</span>{data.strategy==='avalanche'&&<Check size={16}/>}</button><button className={data.strategy==='snowball'?'choice active':'choice'} onClick={()=>choose('snowball')}><ArrowUp size={16}/> Snowball <span>Smallest balance first</span>{data.strategy==='snowball'&&<Check size={16}/>}</button><label className="field">Extra each month<div className="money-input"><span>$</span><input type="number" min="0" value={data.extra} onChange={e=>setExtra(e.target.value)}/></div></label></Panel><Panel title="Projection" kicker="FINISH LINE"><div className="big-number">{payoffDate?payoffDate.toLocaleDateString('en-US',{month:'long',year:'numeric'}):'—'}</div><Row left="Months remaining" right={String(plan.months)}/><Row left="Projected interest" right={money.format(plan.interest)}/><Row left="Difference vs alternative" right={money.format(Math.abs(plan.interest-alt.interest))}/></Panel></section></>}
+  {page==='spending'&&<PageHead title="Spending" text="See what your lifestyle is costing across cards and debit purchases."><section className="two-col"><Panel title="By category" kicker="WHERE MONEY WENT">{byCategory.length?byCategory.map(x=><div className="category" key={x.name}><span>{x.name}</span><div><i style={{width:`${Math.max(6,(x.total/byCategory[0].total)*100)}%`}}/></div><b>{money.format(x.total)}</b></div>):<Empty/>}</Panel><Panel title="Discretionary opportunity" kicker="POTENTIAL PAYOFF FUEL"><div className="big-number">{money.format(discretionary)}</div><p className="muted">Dining, shopping, subscriptions, entertainment and travel currently logged.</p><p className="muted">Redirecting even 25% would add about <strong>{money.format(discretionary*.25)}</strong> to debt payoff.</p></Panel></section></PageHead>}
+  {page==='insights'&&<PageHead title="Insights" text="Recommendations are based on the financial activity you log."><div className="insight-grid"><Insight text={top?`Your top category is ${top.name} at ${money.format(top.total)}. Review recent ${top.name.toLowerCase()} purchases for easy cuts.`:'Start logging purchases to get category-specific suggestions.'}/><Insight text={cards.some(c=>c.limit&&c.balance/c.limit>.5)?'At least one card is above 50% utilization. Prioritizing that balance can improve your debt profile.':'No logged card is currently above 50% utilization.'}/><Insight text={data.payments.length?`You have logged ${data.payments.length} card payment(s). Payments reduce both the card balance and the selected bank balance.`:'Log card payments so cash and debt stay synchronized.'}/><Insight text={discretionary?`Cutting 25% of discretionary spending would free about ${money.format(discretionary*.25)} based on what is currently logged.`:'Once discretionary purchases are logged, Debt Free can suggest payoff opportunities.'}/></div></PageHead>}
+ </main></div>
+ {modal&&<div className="modal-backdrop" onMouseDown={()=>setModal(null)}><form className="modal" onSubmit={modal==='purchase'?addPurchase:modal==='payment'?addPayment:addAccount} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setModal(null)}><X/></button><span className="kicker">{modal==='purchase'?'NEW TRANSACTION':modal==='payment'?'DEBT PAYMENT':'NEW ACCOUNT'}</span><h2>{modal==='purchase'?'Log a purchase':modal==='payment'?'Pay a credit card':'Add an account'}</h2>{modal==='purchase'&&<><label>Merchant<input autoFocus value={form.merchant||''} onChange={e=>setForm({...form,merchant:e.target.value})}/></label><label>Amount<input type="number" step=".01" min=".01" value={form.amount||''} onChange={e=>setForm({...form,amount:e.target.value})}/></label><label>Paid with<select value={form.accountId||''} onChange={e=>setForm({...form,accountId:e.target.value})}><option value="">Choose account</option>{data.accounts.filter(a=>a.type!=='savings').map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label><label>Category<select value={form.category||'Groceries'} onChange={e=>setForm({...form,category:e.target.value})}>{categories.map(c=><option key={c}>{c}</option>)}</select></label></>}{modal==='payment'&&<><label>Pay from<select value={form.bankId||''} onChange={e=>setForm({...form,bankId:e.target.value})}>{cashAccounts.map(a=><option value={a.id} key={a.id}>{a.name} — {money.format(a.balance)}</option>)}</select></label><label>Credit card<select value={form.cardId||''} onChange={e=>setForm({...form,cardId:e.target.value})}>{cards.map(a=><option value={a.id} key={a.id}>{a.name} — {money.format(a.balance)} owed</option>)}</select></label><label>Payment amount<input type="number" step=".01" min=".01" value={form.amount||''} onChange={e=>setForm({...form,amount:e.target.value})}/></label><p className="modal-note">This decreases both the selected bank balance and the credit-card balance. It is not counted as spending.</p></>}{modal==='account'&&<><label>Name<input autoFocus value={form.name||''} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Type<select value={form.type||'checking'} onChange={e=>setForm({...form,type:e.target.value})}><option value="checking">Checking</option><option value="savings">Savings</option><option value="credit">Credit card</option></select></label><label>Current balance<input type="number" step=".01" value={form.balance||''} onChange={e=>setForm({...form,balance:e.target.value})}/></label>{form.type==='credit'&&<div className="form-row"><label>APR %<input type="number" step=".01" value={form.apr||''} onChange={e=>setForm({...form,apr:e.target.value})}/></label><label>Minimum<input type="number" step=".01" value={form.minimum||''} onChange={e=>setForm({...form,minimum:e.target.value})}/></label><label>Credit limit<input type="number" step=".01" value={form.limit||''} onChange={e=>setForm({...form,limit:e.target.value})}/></label></div>}</>}<button className="primary submit">Save</button></form></div>}
+ </div>
 }
-
-function PayoffChart({ timeline }) {
-  if (!timeline?.length || timeline.length < 2) return null
-  const width = 600, height = 170, pad = 10
-  const max = Math.max(...timeline, 1)
-  const points = timeline.map((balance, index) => {
-    const x = pad + (index / (timeline.length - 1)) * (width - pad * 2)
-    const y = pad + (1 - balance / max) * (height - pad * 2)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-  return <div className="chart-wrap" aria-label="Projected debt balance over time">
-    <svg viewBox={`0 0 ${width} ${height}`} role="img">
-      <defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity=".28"/><stop offset="100%" stopColor="currentColor" stopOpacity="0"/></linearGradient></defs>
-      <polygon className="chart-area" points={`${pad},${height-pad} ${points} ${width-pad},${height-pad}`} />
-      <polyline className="chart-line" points={points} />
-    </svg>
-    <div className="chart-labels"><span>Today</span><span>Debt free</span></div>
-  </div>
-}
-
-export default function App() {
-  const [debts, setDebts] = useState(() => loadJson(STORAGE.debts, starterDebts))
-  const [payments, setPayments] = useState(() => loadJson(STORAGE.payments, []))
-  const [strategy, setStrategy] = useState(() => localStorage.getItem(STORAGE.strategy) || 'avalanche')
-  const [extra, setExtraState] = useState(() => Number(localStorage.getItem(STORAGE.extra) ?? 250))
-  const [modal, setModal] = useState(null)
-  const [notice, setNotice] = useState('')
-  const [form, setForm] = useState({ name: '', balance: '', apr: '', minimum: '' })
-  const [payment, setPayment] = useState({ debtId: '', amount: '' })
-  const importRef = useRef(null)
-
-  const saveDebts = (next) => { setDebts(next); localStorage.setItem(STORAGE.debts, JSON.stringify(next)) }
-  const savePayments = (next) => { setPayments(next); localStorage.setItem(STORAGE.payments, JSON.stringify(next)) }
-  const setExtra = (value) => { setExtraState(value); localStorage.setItem(STORAGE.extra, String(value)) }
-  const chooseStrategy = (value) => { setStrategy(value); localStorage.setItem(STORAGE.strategy, value) }
-  const flash = (message) => { setNotice(message); window.setTimeout(() => setNotice(''), 2600) }
-
-  const total = debts.reduce((sum, debt) => sum + Number(debt.balance), 0)
-  const minimums = debts.reduce((sum, debt) => sum + Number(debt.minimum), 0)
-  const paidRecorded = payments.reduce((sum, item) => sum + Number(item.amount), 0)
-  const progressBase = total + paidRecorded
-  const progress = progressBase > 0 ? Math.min(100, (paidRecorded / progressBase) * 100) : 0
-  const plan = useMemo(() => simulatePayoff(debts, extra, strategy), [debts, extra, strategy])
-  const alt = useMemo(() => simulatePayoff(debts, extra, strategy === 'avalanche' ? 'snowball' : 'avalanche'), [debts, extra, strategy])
-  const ordered = useMemo(() => orderDebts(debts, strategy), [debts, strategy])
-  const payoffDate = plan.paidOff ? projectedDate(plan.months) : null
-  const interestDifference = Math.abs(plan.interest - alt.interest)
-
-  const openAdd = () => { setForm({ name: '', balance: '', apr: '', minimum: '' }); setModal('debt') }
-  const openEdit = (debt) => { setForm({ ...debt }); setModal('debt') }
-
-  const submitDebt = (event) => {
-    event.preventDefault()
-    const balance = Number(form.balance), apr = Number(form.apr || 0), minimum = Number(form.minimum)
-    if (!form.name.trim() || !Number.isFinite(balance) || balance < 0 || !Number.isFinite(apr) || apr < 0 || !Number.isFinite(minimum) || minimum <= 0) return
-    const item = { id: form.id || crypto.randomUUID(), name: form.name.trim(), balance, apr, minimum }
-    saveDebts(form.id ? debts.map((debt) => debt.id === form.id ? item : debt) : [...debts, item])
-    setModal(null)
-    flash(form.id ? 'Debt updated.' : 'Debt added to your plan.')
-  }
-
-  const deleteDebt = (debt) => {
-    if (!confirm(`Remove ${debt.name} from your plan? Payment history will be kept.`)) return
-    saveDebts(debts.filter((item) => item.id !== debt.id))
-    flash('Debt removed.')
-  }
-
-  const submitPayment = (event) => {
-    event.preventDefault()
-    const requested = Number(payment.amount)
-    const debt = debts.find((item) => item.id === payment.debtId)
-    if (!debt || !Number.isFinite(requested) || requested <= 0) return
-    const amount = Math.min(requested, Number(debt.balance))
-    if (amount <= 0) return
-    saveDebts(debts.map((item) => item.id === debt.id ? { ...item, balance: Math.max(0, Number(item.balance) - amount) } : item))
-    savePayments([{ id: crypto.randomUUID(), debtId: debt.id, debtName: debt.name, amount, date: new Date().toISOString() }, ...payments])
-    setPayment({ debtId: '', amount: '' })
-    setModal(null)
-    flash(`${money.format(amount)} payment recorded.`)
-  }
-
-  const undoPayment = (item) => {
-    const debt = debts.find((entry) => entry.id === item.debtId)
-    if (debt) saveDebts(debts.map((entry) => entry.id === item.debtId ? { ...entry, balance: Number(entry.balance) + Number(item.amount) } : entry))
-    savePayments(payments.filter((entry) => entry.id !== item.id))
-    flash(debt ? 'Payment undone and balance restored.' : 'Payment removed from history.')
-  }
-
-  const exportData = () => {
-    const payload = { version: VERSION, exportedAt: new Date().toISOString(), debts, payments, strategy, extra: Number(extra) }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `debt-free-backup-v${VERSION}.json`
-    anchor.click()
-    URL.revokeObjectURL(url)
-    flash('Backup exported.')
-  }
-
-  const importData = async (event) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    try {
-      const parsed = JSON.parse(await file.text())
-      if (!Array.isArray(parsed.debts) || !Array.isArray(parsed.payments)) throw new Error('Invalid backup')
-      const cleanDebts = parsed.debts.map((debt) => ({
-        id: String(debt.id || crypto.randomUUID()), name: String(debt.name || 'Debt'),
-        balance: Math.max(0, Number(debt.balance) || 0), apr: Math.max(0, Number(debt.apr) || 0),
-        minimum: Math.max(0, Number(debt.minimum) || 0),
-      }))
-      if (!confirm(`Restore ${cleanDebts.length} debt account(s) and ${parsed.payments.length} payment record(s) from this backup? This replaces current data.`)) return
-      saveDebts(cleanDebts)
-      savePayments(parsed.payments)
-      chooseStrategy(parsed.strategy === 'snowball' ? 'snowball' : 'avalanche')
-      setExtra(Math.max(0, Number(parsed.extra) || 0))
-      flash('Backup restored successfully.')
-    } catch {
-      alert('That file is not a valid Debt Free backup.')
-    }
-  }
-
-  const reset = () => {
-    if (!confirm('Start fresh? This removes Debt Free debts, payments, and settings saved on this device.')) return
-    Object.values(STORAGE).forEach((key) => localStorage.removeItem(key))
-    setDebts([]); setPayments([]); setStrategy('avalanche'); setExtraState(250)
-    flash('Fresh start created.')
-  }
-
-  return <div className="app">
-    <header>
-      <div className="brand"><div className="mark"><Target size={22}/></div><div><strong>Debt Free</strong><span>Own your finish line. · v{VERSION}</span></div></div>
-      <div className="privacy"><ShieldCheck size={16}/> Your data stays on this device</div>
-    </header>
-
-    {notice && <div className="toast" role="status">{notice}</div>}
-
-    <main>
-      <section className="hero">
-        <div><div className="eyebrow"><Sparkles size={14}/> YOUR PAYOFF COMMAND CENTER</div><h1>Make debt feel<br/><em>finite.</em></h1><p>Track balances, record real payments, compare payoff methods, and turn your monthly effort into a finish line you can see.</p></div>
-        <div className="freedom-card"><span>Projected debt-free date</span><strong>{!debts.length ? 'Add your first debt' : payoffDate ? payoffDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Needs a payment plan'}</strong><div className="line"><span>{plan.paidOff ? `${plan.months} months to go` : 'Increase monthly payments'}</span><span>{money.format(plan.interest)} est. interest</span></div></div>
-      </section>
-
-      <section className="stats">
-        <div><span>Total debt</span><strong>{money.format(total)}</strong><small>Across {debts.length} account{debts.length === 1 ? '' : 's'}</small></div>
-        <div><span>Monthly plan</span><strong>{money.format(minimums + Number(extra || 0))}</strong><small>{money.format(minimums)} minimums + {money.format(Number(extra || 0))} extra</small></div>
-        <div><span>Progress recorded</span><strong>{progress.toFixed(0)}%</strong><small>{money.format(paidRecorded)} in logged payments</small></div>
-      </section>
-
-      {debts.length > 0 && <section className="panel projection-panel">
-        <div className="projection-copy"><span className="kicker">PROJECTED JOURNEY</span><h2>Your balance has an exit ramp.</h2><p>Based on your current balances, APRs, minimums, extra payment, and {strategy} strategy.</p></div>
-        <PayoffChart timeline={plan.timeline}/>
-        <div className="milestone"><Trophy size={18}/><div><span>Next milestone</span><strong>{progress < 25 ? '25% paid' : progress < 50 ? 'Halfway there' : progress < 75 ? '75% paid' : progress < 100 ? 'Final stretch' : 'Debt free'}</strong></div></div>
-      </section>}
-
-      <section className="grid">
-        <div className="panel debts-panel">
-          <div className="panel-head"><div><span className="kicker">YOUR DEBTS</span><h2>Payoff queue</h2></div><div className="actions"><button className="secondary" onClick={() => setModal('payment')} disabled={!debts.length}>Log payment</button><button className="primary" onClick={openAdd}><Plus size={17}/> Add debt</button></div></div>
-          {ordered.length === 0 ? <div className="empty"><WalletCards/><h3>Your clean slate</h3><p>Add an account to build your personalized payoff plan.</p></div> : ordered.map((debt, index) => <div className="debt" key={debt.id}><div className="rank">{index + 1}</div><div className="debt-main"><div className="debt-title"><strong>{debt.name}</strong><span>{debt.apr}% APR</span></div><div className="bar"><i style={{ width: `${Math.max(5, (debt.balance / Math.max(...debts.map((item) => Number(item.balance)), 1)) * 100)}%` }}/></div><div className="debt-meta"><span>{money.format(debt.balance)} balance</span><span>{money.format(debt.minimum)}/mo minimum</span></div></div><button className="icon" onClick={() => openEdit(debt)} aria-label={`Edit ${debt.name}`}><Pencil size={15}/></button><button className="icon danger-icon" onClick={() => deleteDebt(debt)} aria-label={`Delete ${debt.name}`}><Trash2 size={15}/></button></div>)}
-
-          {payments.length > 0 && <div className="history"><span className="kicker">RECENT PAYMENTS</span>{payments.slice(0, 5).map((item) => <div className="history-row" key={item.id}><span>{item.debtName}<small>{new Date(item.date).toLocaleDateString()}</small></span><div><strong>-{money.format(item.amount)}</strong><button className="icon" onClick={() => undoPayment(item)} title="Undo payment" aria-label={`Undo ${money.format(item.amount)} payment`}><Undo2 size={14}/></button></div></div>)}</div>}
-        </div>
-
-        <aside>
-          <div className="panel strategy"><span className="kicker">PAYOFF METHOD</span><h2>Choose your attack</h2><button className={strategy === 'avalanche' ? 'choice active' : 'choice'} onClick={() => chooseStrategy('avalanche')}><div><ArrowDown/><strong>Avalanche</strong></div><span>Highest interest first</span>{strategy === 'avalanche' && <Check/>}</button><button className={strategy === 'snowball' ? 'choice active' : 'choice'} onClick={() => chooseStrategy('snowball')}><div><ArrowUp/><strong>Snowball</strong></div><span>Smallest balance first</span>{strategy === 'snowball' && <Check/>}</button><div className="extra"><label htmlFor="extra">Extra payment each month</label><div className="money-input"><span>$</span><input id="extra" type="number" min="0" step="1" value={extra} onChange={(event) => setExtra(event.target.value)}/></div><small>Added on top of all minimum payments.</small></div></div>
-
-          <div className="panel insight"><div className="insight-icon"><Gauge/></div><div><span className="kicker">PLAN INSIGHT</span><p>{interestDifference < 1 ? 'Both strategies are nearly identical for this mix of debts.' : plan.interest <= alt.interest ? `Your ${strategy} plan saves about ${money.format(interestDifference)} in projected interest versus the alternative.` : `Switching strategies could save about ${money.format(interestDifference)} in projected interest.`}</p></div></div>
-
-          <div className="panel tools"><span className="kicker">YOUR DATA</span><input ref={importRef} className="file-input" type="file" accept="application/json,.json" onChange={importData}/><button className="tool-btn" onClick={exportData}><Download size={16}/> Export backup</button><button className="tool-btn" onClick={() => importRef.current?.click()}><Upload size={16}/> Restore backup</button><button className="tool-btn danger" onClick={reset}><RotateCcw size={16}/> Start fresh</button></div>
-        </aside>
-      </section>
-    </main>
-
-    {modal === 'debt' && <div className="modal-backdrop" onMouseDown={() => setModal(null)}><form className="modal" onSubmit={submitDebt} onMouseDown={(event) => event.stopPropagation()}><button type="button" className="close" onClick={() => setModal(null)} aria-label="Close"><X/></button><span className="kicker">{form.id ? 'EDIT ACCOUNT' : 'NEW ACCOUNT'}</span><h2>{form.id ? 'Update debt' : 'Add a debt'}</h2><p>Use the numbers from your latest statement.</p><label>Account name<input autoFocus required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="e.g. Visa card"/></label><div className="form-row"><label>Balance<input required type="number" min="0" step=".01" value={form.balance} onChange={(event) => setForm({ ...form, balance: event.target.value })} placeholder="0.00"/></label><label>APR %<input required type="number" min="0" step=".01" value={form.apr} onChange={(event) => setForm({ ...form, apr: event.target.value })} placeholder="0.00"/></label></div><label>Minimum monthly payment<input required type="number" min="0.01" step=".01" value={form.minimum} onChange={(event) => setForm({ ...form, minimum: event.target.value })} placeholder="0.00"/></label><button className="primary submit"><CreditCard size={17}/>{form.id ? 'Save changes' : 'Add to my plan'}</button></form></div>}
-
-    {modal === 'payment' && <div className="modal-backdrop" onMouseDown={() => setModal(null)}><form className="modal" onSubmit={submitPayment} onMouseDown={(event) => event.stopPropagation()}><button type="button" className="close" onClick={() => setModal(null)} aria-label="Close"><X/></button><span className="kicker">PROGRESS</span><h2>Log a payment</h2><p>Recording a payment updates that balance and recalculates your finish line.</p><label>Debt<select required value={payment.debtId} onChange={(event) => setPayment({ ...payment, debtId: event.target.value })}><option value="">Choose an account</option>{debts.filter((debt) => Number(debt.balance) > 0).map((debt) => <option value={debt.id} key={debt.id}>{debt.name} — {money.format(debt.balance)}</option>)}</select></label><label>Payment amount<input required type="number" min="0.01" step=".01" value={payment.amount} onChange={(event) => setPayment({ ...payment, amount: event.target.value })} placeholder="0.00"/></label><button className="primary submit">Record payment</button></form></div>}
-  </div>
-}
+function Stat({label,value,note}){return <div><span>{label}</span><strong>{value}</strong><small>{note}</small></div>}
+function Panel({title,kicker,children}){return <section className="panel content-panel"><span className="kicker">{kicker}</span><h2>{title}</h2>{children}</section>}
+function Row({left,right,sub}){return <div className="row"><div><strong>{left}</strong>{sub&&<small>{sub}</small>}</div><b>{right}</b></div>}
+function Insight({text}){return <div className="insight-card"><div><Gauge size={17}/></div><p>{text}</p></div>}
+function PageHead({title,text,action,onClick,children}){return <><div className="page-head"><div><h2>{title}</h2><p>{text}</p></div>{action&&<button className="primary" onClick={onClick}><Plus size={16}/>{action}</button>}</div>{children}</>}
+function Empty(){return <div className="empty"><List/><p>No data yet.</p></div>}
