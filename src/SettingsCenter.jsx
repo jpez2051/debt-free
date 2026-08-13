@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Cloud, Download, HardDrive, MonitorCog, Settings, ShieldCheck, Upload, X } from 'lucide-react'
-import { BACKUP_SCHEMA, RELEASE_VERSION, STORAGE_KEY } from './release.js'
+import { BACKUP_SCHEMA, STORAGE_KEY } from './release.js'
+
+const APP_VERSION = '0.5.2'
 
 function readStoredData(){
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') } catch { return null }
@@ -11,7 +13,7 @@ function downloadJson(payload, filename){
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}), url=URL.createObjectURL(blob), a=document.createElement('a')
   a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)
 }
-function backupPayload(data){ return {schema:BACKUP_SCHEMA,app:'Debt Free',version:RELEASE_VERSION,exportedAt:new Date().toISOString(),data} }
+function backupPayload(data){ return {schema:BACKUP_SCHEMA,app:'Debt Free',version:APP_VERSION,exportedAt:new Date().toISOString(),data} }
 
 export default function SettingsCenter(){
   const [open,setOpen]=useState(false), [message,setMessage]=useState(''), [navTarget,setNavTarget]=useState(null)
@@ -24,7 +26,7 @@ export default function SettingsCenter(){
 
   const exportBackup=()=>{
     const current=readStoredData();if(!validateData(current)){setMessage('There is no valid Debt Free data to back up yet.');return}
-    const stamp=new Date().toISOString().slice(0,10);downloadJson(backupPayload(current),`debt-free-backup-v${RELEASE_VERSION}-${stamp}.json`)
+    const stamp=new Date().toISOString().slice(0,10);downloadJson(backupPayload(current),`debt-free-backup-v${APP_VERSION}-${stamp}.json`)
     localStorage.setItem('debt-free-last-backup',new Date().toISOString());setMessage('Backup downloaded successfully.')
   }
   const restoreBackup=async e=>{
@@ -43,7 +45,7 @@ export default function SettingsCenter(){
     {navTarget&&createPortal(navButton,navTarget)}
     {open&&<div className="settings-backdrop" onMouseDown={()=>setOpen(false)}><section className="settings-panel" onMouseDown={e=>e.stopPropagation()}>
       <button className="settings-close" type="button" onClick={()=>setOpen(false)} aria-label="Close settings"><X size={18}/></button>
-      <div className="settings-heading"><div className="settings-icon"><Settings size={22}/></div><div><span className="kicker">SETTINGS</span><h2>Debt Free</h2><p>Version {RELEASE_VERSION}</p></div></div>
+      <div className="settings-heading"><div className="settings-icon"><Settings size={22}/></div><div><span className="kicker">SETTINGS</span><h2>Debt Free</h2><p>Version {APP_VERSION}</p></div></div>
 
       <div className="settings-section"><div className="settings-section-title"><Cloud size={18}/><div><strong>Account & sync</strong><span>Cloud accounts are planned for Firebase.</span></div></div><div className="settings-status"><span>Current storage</span><strong><HardDrive size={15}/> This browser only</strong></div><p>Your financial records currently stay on this device. When cloud sync is introduced, this section will become the home for sign-in, sync status and account management.</p></div>
 
