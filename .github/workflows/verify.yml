@@ -22,7 +22,5 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
-      - name: Run payoff tests
-        run: npm test
-      - name: Build production app
-        run: npm run build
+      - name: Verify tests, version, and production build
+        run: npm run check
