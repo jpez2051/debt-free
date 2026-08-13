@@ -2,6 +2,18 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.4.0 — Personal finance assistant
+
+- Rebuilt the app around multi-page navigation: Dashboard, Accounts, Transactions, Debts, Payoff Plan, Spending, and Insights.
+- Added checking, savings, and credit-card account balances.
+- Added categorized credit-card and debit/checking purchases.
+- Credit-card purchases increase the selected card balance.
+- Debit/checking purchases reduce the selected bank balance.
+- Credit-card payments now reduce both the selected bank account and card balance without double-counting the payment as spending.
+- Added card utilization, payment history, category spending summaries, discretionary-spending opportunities, and contextual finance insights.
+- Kept avalanche/snowball payoff projections integrated with live card balances.
+- Added desktop sidebar and mobile bottom navigation.
+
 ## v0.3.0 — Pre-test hardening
 
 - Extracted and tested the payoff calculation engine.
