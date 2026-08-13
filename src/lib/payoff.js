@@ -17,12 +17,17 @@ export function orderDebts(debts, strategy = 'avalanche') {
 export function simulatePayoff(debts, extra = 0, strategy = 'avalanche', maxMonths = 1200) {
   const items = debts.map(normalizeDebt)
   const monthlyExtra = Math.max(0, Number(extra) || 0)
+  const monthlyBudget = items.reduce((sum, debt) => sum + debt.minimum, 0) + monthlyExtra
   let months = 0
   let interest = 0
   const timeline = [items.reduce((sum, debt) => sum + debt.balance, 0)]
 
   if (!items.length || timeline[0] <= 0) {
     return { months: 0, interest: 0, timeline, paidOff: true }
+  }
+
+  if (monthlyBudget <= 0) {
+    return { months: 0, interest: 0, timeline, paidOff: false }
   }
 
   while (items.some((debt) => debt.balance > 0.005) && months < maxMonths) {
@@ -35,31 +40,26 @@ export function simulatePayoff(debts, extra = 0, strategy = 'avalanche', maxMont
       interest += monthlyInterest
     }
 
-    // Minimums are always paid first. Any unused minimum from a debt that
-    // finishes this month rolls into the attack payment in the same month.
-    let attackBudget = monthlyExtra
+    // Keep the original total monthly debt budget constant. As accounts are
+    // eliminated, their old minimums automatically become attack money.
+    let remainingBudget = monthlyBudget
     for (const debt of items) {
       if (debt.balance <= 0) continue
-      const scheduled = Math.min(debt.minimum, debt.balance)
+      const scheduled = Math.min(debt.minimum, debt.balance, remainingBudget)
       debt.balance -= scheduled
-      attackBudget += Math.max(0, debt.minimum - scheduled)
+      remainingBudget -= scheduled
     }
 
     const targets = orderDebts(items.filter((debt) => debt.balance > 0.005), strategy)
     for (const target of targets) {
-      if (attackBudget <= 0) break
+      if (remainingBudget <= 0) break
       const live = items.find((debt) => debt.id === target.id)
-      const payment = Math.min(attackBudget, live.balance)
+      const payment = Math.min(remainingBudget, live.balance)
       live.balance -= payment
-      attackBudget -= payment
+      remainingBudget -= payment
     }
 
     timeline.push(items.reduce((sum, debt) => sum + Math.max(0, debt.balance), 0))
-
-    // A plan with no effective payment can never amortize. Stop cleanly
-    // instead of looping for 100 years and pretending it is a payoff date.
-    const effectivePayment = items.reduce((sum, debt) => sum + debt.minimum, 0) + monthlyExtra
-    if (effectivePayment <= 0) break
   }
 
   const paidOff = items.every((debt) => debt.balance <= 0.005)
