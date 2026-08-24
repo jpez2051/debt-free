@@ -4,7 +4,7 @@ import { orderDebts, projectedDate, simulatePayoff } from './lib/payoff.js'
 
 const VERSION='0.5.0'
 const STORAGE_KEY='debt-free-v040'
-const categories=['Groceries','Dining','Fuel','Shopping','Subscriptions','Entertainment','Utilities','Health','Travel','Housing','Insurance','Other']
+const categories=['Groceries','Dining','Fuel','Shopping','Subscriptions','Entertainment','Utilities','Health','Travel','Housing','Insurance','Interest','Other']
 const starter={
  accounts:[{id:'checking',name:'Main Checking',type:'checking',balance:4200},{id:'savings',name:'Savings',type:'savings',balance:8500},{id:'visa',name:'Visa',type:'credit',balance:3200,apr:24.99,minimum:110,limit:7000,dueDay:18,statementDay:22},{id:'mc',name:'Mastercard',type:'credit',balance:1450,apr:18.49,minimum:55,limit:5000,dueDay:8,statementDay:12}],
  transactions:[{id:'t1',date:new Date().toISOString(),merchant:'Groceries',amount:96.42,category:'Groceries',accountId:'visa',kind:'purchase',historical:false},{id:'t2',date:new Date().toISOString(),merchant:'Gas Station',amount:54.10,category:'Fuel',accountId:'checking',kind:'purchase',historical:false}],

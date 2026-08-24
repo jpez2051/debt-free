@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.12 — Expense and interest entry
+
+- Renamed user-facing purchase actions to expense actions so non-purchase card charges fit naturally.
+- Added Interest as an expense category for finance charges that increase a selected credit-card balance.
+- Constrained native date controls to their modal columns so payment, due-date, and statement-date fields align with adjacent fields.
+- Added responsive coverage for shared date-field sizing and release wording.
+
 ## v0.5.11 — Click-to-open date pickers
 
 - Made every transaction date field open the native calendar when the field is clicked.
