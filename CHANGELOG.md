@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.11 — Click-to-open date pickers
+
+- Made every transaction date field open the native calendar when the field is clicked.
+- Applied the same calendar behavior to income, purchases, transfers, card payments, card due dates, and statement closing dates.
+- Preserved native iOS and Android date-picker behavior and verified phone-width modal layouts.
+- Made the release transform pipeline tolerant of Windows CRLF checkouts.
+- Added automated coverage for all generated date fields.
+
 ## v0.4.0 — Personal finance assistant
 
 - Rebuilt the app around multi-page navigation: Dashboard, Accounts, Transactions, Debts, Payoff Plan, Spending, and Insights.

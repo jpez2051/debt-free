@@ -4,7 +4,7 @@ function replaceOrThrow(code, before, after, label) {
 }
 
 export function transformAppV054(source) {
-  let code = source
+  let code = source.replace(/\r\n/g, '\n')
 
   code = `import './currencyPrecision.js'\nimport './v054.css'\n${code}`
   code = replaceOrThrow(code, "const VERSION='0.5.0'", "const VERSION='0.5.4'", 'version')
@@ -68,7 +68,7 @@ export function transformAppV054(source) {
   code = replaceOrThrow(
     code,
     "<div className=\"form-row\"><Field label=\"Due day\"><input type=\"number\" min=\"1\" max=\"31\" value={form.dueDay??''} onChange={e=>setForm({...form,dueDay:e.target.value})}/></Field><Field label=\"Statement day\"><input type=\"number\" min=\"1\" max=\"31\" value={form.statementDay??''} onChange={e=>setForm({...form,statementDay:e.target.value})}/></Field></div>",
-    "<div className=\"form-row\"><Field label=\"Next payment due\"><input type=\"date\" value={form.nextDueDate||''} onChange={e=>setForm({...form,nextDueDate:e.target.value})}/></Field><Field label=\"Statement closing date\"><input type=\"date\" value={form.statementDate||''} onChange={e=>setForm({...form,statementDate:e.target.value})}/></Field></div>",
+    "<div className=\"form-row\"><Field label=\"Next payment due\"><DateInput value={form.nextDueDate||''} onChange={e=>setForm({...form,nextDueDate:e.target.value})}/></Field><Field label=\"Statement closing date\"><DateInput value={form.statementDate||''} onChange={e=>setForm({...form,statementDate:e.target.value})}/></Field></div>",
     'card date inputs'
   )
 

@@ -5,6 +5,7 @@ import { transformAppV056 } from './scripts/v056-app-transform.js'
 import { transformAppV057 } from './scripts/v057-app-transform.js'
 import { transformAppV058 } from './scripts/v058-app-transform.js'
 import { transformAppV0510 } from './scripts/v0510-app-transform.js'
+import { transformAppV0511 } from './scripts/v0511-app-transform.js'
 
 export default defineConfig({
   base: '/debt-free/',
@@ -13,7 +14,7 @@ export default defineConfig({
     enforce: 'pre',
     transform(code, id) {
       if (!id.endsWith('/src/App.jsx')) return null
-      return transformAppV0510(transformAppV058(transformAppV057(transformAppV056(transformAppV055(transformAppV054(code))))))
+      return transformAppV0511(transformAppV0510(transformAppV058(transformAppV057(transformAppV056(transformAppV055(transformAppV054(code)))))))
     },
   }],
 })
