@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.17 — Unified themes and icon colors
+
+- Fixed black mobile-navigation icons in light mode.
+- Applied accent colors consistently across navigation, settings and status icons.
+- Improved light-mode surfaces, borders, controls and overlays.
+
 ## v0.5.16 — Credit-score entry modal
 
 - Replaced the always-visible score form with an Add score button.
