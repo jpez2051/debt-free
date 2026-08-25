@@ -1,0 +1,3 @@
+/* Debt Free v0.5.16 credit-score modal */
+.credit-tracker-head{display:flex;align-items:center;justify-content:space-between;gap:18px}.credit-tracker-head h2{margin-bottom:0}.credit-tracker-head .primary{flex:0 0 auto}.credit-tracker .credit-note{margin-top:10px}.credit-tracker .score-history{margin-top:10px}
+@media(max-width:520px){.credit-tracker-head{align-items:flex-start;flex-direction:column}.credit-tracker-head .primary{width:100%;justify-content:center}.credit-tracker .empty{padding:24px 8px}}

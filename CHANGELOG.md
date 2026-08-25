@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.16 — Credit-score entry modal
+
+- Replaced the always-visible score form with an Add score button.
+- Open score entry in a focused, responsive modal while preserving visible history.
+
 ## v0.5.15 — Account-aware spending
 
 - Group Spending by account as well as category or merchant.
