@@ -2,6 +2,16 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.8.0 — Recurring subscriptions and card charges
+
+- Added credit cards as recurring-bill payment methods with correct card-balance increases.
+- Distinguished cash payments from card charges throughout bill status, entry, and history.
+- Conservatively retained card-funded bills in Safe to Spend instead of releasing cash prematurely.
+- Added monthly and annual schedules, expected versus actual amounts, and autopay/manual status.
+- Added likely-duplicate protection for recurring entries and matching expenses.
+- Added archival for bills with history and prevented linked accounts from changing type.
+- Preserved backward compatibility for existing monthly bills and prior payment records.
+
 ## v0.7.1 — Reliability and data integrity
 
 - Switched default dates and billing-cycle calculations to the user's device-local calendar.

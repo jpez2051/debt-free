@@ -7,7 +7,7 @@ test('v0.7.1 protects linked bill records and preserves negative shortfalls',asy
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   assert.match(app,/safeToSpend=cash-remainingBills-remainingMinimums/)
   assert.match(app,/billPayments\|\|\[\]\)\.filter\(p=>p\.bankId===a\.id\)/)
-  assert.match(app,/payment record\(s\).*before deleting the bill/)
+  assert.match(app,/historical payment record\(s\).*Archive it instead/)
   assert.match(app,/obligation\?\.remaining\|\|b\.amount/)
   assert.match(app,/confirmOutflow/)
 })

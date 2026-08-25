@@ -9,9 +9,9 @@ test('v0.5.11 transform remains chained into the current release', async () => {
   const release = await readFile(new URL('../src/release.js', import.meta.url), 'utf8')
   const vite = await readFile(new URL('../vite.config.js', import.meta.url), 'utf8')
 
-  assert.equal(packageJson.version, '0.7.1')
-  assert.equal(version, '0.7.1')
-  assert.match(release, /RELEASE_VERSION = '0\.7\.1'/)
+  assert.equal(packageJson.version, '0.8.0')
+  assert.equal(version, '0.8.0')
+  assert.match(release, /RELEASE_VERSION = '0\.8\.0'/)
   assert.match(vite, /transformAppV0511/)
   assert.match(transformAppV0511("const VERSION='0.5.10'"), /0\.5\.11/)
 })

@@ -57,3 +57,17 @@ test('bill obligations track partial and complete payments for the current cycle
   assert.equal(paid.paid,900)
   assert.equal(paid.remaining,0)
 })
+
+test('annual bills use their renewal date and a one-year payment cycle',()=>{
+  const annual={id:'icloud',name:'iCloud+',amount:35.88,frequency:'annual',nextDueDate:'2026-11-15',accountId:'visa',active:true}
+  const before=billObligation(annual,[],'Visa',now)
+  assert.equal(before.dueDate.toISOString().slice(0,10),'2026-11-15')
+  assert.equal(before.remaining,35.88)
+  const paid=billObligation(annual,[{billId:'icloud',amount:35.88,date:'2026-08-25T12:00:00.000Z'}],'Visa',now)
+  assert.equal(paid.remaining,0)
+})
+
+test('upcoming bills expose whether their funding account is a credit card',()=>{
+  const items=upcomingObligations({cards:[],bills:[{id:'icloud',name:'iCloud+',amount:2.99,dueDay:15,accountId:'visa',active:true}],payments:[],billPayments:[],accounts:[{id:'visa',name:'Visa',type:'credit'}],now})
+  assert.equal(items[0].fundingType,'credit')
+})
