@@ -32,6 +32,8 @@ export default function AdaptiveNav(){
     return()=>observer.disconnect()
   },[])
 
+  useEffect(()=>{if(!open)return;const close=e=>{if(e.key==='Escape')setOpen(null)};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[open])
+
   const chooseGroup=group=>{
     if(group.items.length===1){clickSidebar(group.items[0]);setOpen(null);return}
     setOpen(open===group.id?null:group.id)
@@ -39,7 +41,7 @@ export default function AdaptiveNav(){
 
   const navLayer=<>
     {open&&<div className="mobile-nav-scrim" onClick={()=>setOpen(null)}/>} 
-    {open&&<section className="mobile-nav-sheet" aria-label={`${groups.find(g=>g.id===open)?.label} navigation`}>
+    {open&&<section className="mobile-nav-sheet" role="dialog" aria-modal="true" aria-label={`${groups.find(g=>g.id===open)?.label} navigation`}>
       <div className="mobile-nav-sheet-head"><strong>{groups.find(g=>g.id===open)?.label}</strong><button type="button" onClick={()=>setOpen(null)} aria-label="Close"><X size={18}/></button></div>
       {groups.find(g=>g.id===open)?.items.map(item=><button type="button" key={item} onClick={()=>{clickSidebar(item);setOpen(null)}}>{item}</button>)}
     </section>}

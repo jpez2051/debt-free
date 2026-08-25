@@ -23,7 +23,8 @@ export function filterByReportingPeriod(items,period,now=new Date()){
 }
 
 export function monthlyTrend(items,months=6,now=new Date()){
-  return Array.from({length:months},(_,index)=>{const offset=months-1-index,date=new Date(now.getFullYear(),now.getMonth()-offset,1,12),year=date.getFullYear(),month=date.getMonth(),total=items.filter(item=>{const d=new Date(item.date);return !Number.isNaN(d.getTime())&&d.getFullYear()===year&&d.getMonth()===month}).reduce((sum,item)=>sum+Math.max(0,Number(item.amount)||0),0);return {id:`${year}-${String(month+1).padStart(2,'0')}`,label:date.toLocaleDateString('en-US',{month:'short'}),total}})
+  const endOfToday=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999)
+  return Array.from({length:months},(_,index)=>{const offset=months-1-index,date=new Date(now.getFullYear(),now.getMonth()-offset,1,12),year=date.getFullYear(),month=date.getMonth(),total=items.filter(item=>{const d=new Date(item.date);return !Number.isNaN(d.getTime())&&d<=endOfToday&&d.getFullYear()===year&&d.getMonth()===month}).reduce((sum,item)=>sum+Math.max(0,Number(item.amount)||0),0);return {id:`${year}-${String(month+1).padStart(2,'0')}`,label:date.toLocaleDateString('en-US',{month:'short'}),total}})
 }
 
 export function trendComparison(items,now=new Date()){

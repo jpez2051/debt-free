@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Cloud, Download, HardDrive, MonitorCog, Settings, ShieldCheck, Upload, X } from 'lucide-react'
 import { BACKUP_SCHEMA, RELEASE_VERSION, STORAGE_KEY } from './release.js'
+import { validateData } from './lib/backup.js'
 
 function readStoredData(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
-function validateData(data){return Boolean(data&&typeof data==='object'&&Array.isArray(data.accounts)&&Array.isArray(data.transactions)&&Array.isArray(data.payments)&&Array.isArray(data.bills))}
 function downloadJson(payload,filename){const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
 function backupPayload(data){return{schema:BACKUP_SCHEMA,app:'Debt Free',version:RELEASE_VERSION,exportedAt:new Date().toISOString(),data}}
 
@@ -13,11 +13,11 @@ export default function SettingsCenter(){
  const [mode,setMode]=useState(()=>localStorage.getItem('debt-free-mode')||'system')
  const [accent,setAccent]=useState(()=>localStorage.getItem('debt-free-accent')||'mint')
  const inputRef=useRef(null),data=readStoredData()
- const counts={accounts:data?.accounts?.length||0,activity:data?.transactions?.length||0,payments:data?.payments?.length||0,bills:data?.bills?.length||0}
+ const counts={accounts:data?.accounts?.length||0,activity:data?.transactions?.length||0,payments:(data?.payments?.length||0)+(data?.billPayments?.length||0),bills:data?.bills?.length||0}
  useEffect(()=>setNavTarget(document.querySelector('.sidebar nav')),[])
  useEffect(()=>{document.documentElement.dataset.debtMode=mode;localStorage.setItem('debt-free-mode',mode)},[mode])
  useEffect(()=>{document.documentElement.dataset.debtAccent=accent;localStorage.setItem('debt-free-accent',accent)},[accent])
- const exportBackup=()=>{const current=readStoredData();if(!validateData(current)){setMessage('There is no valid Debt Free data to back up yet.');return}const stamp=new Date().toISOString().slice(0,10);downloadJson(backupPayload(current),`debt-free-backup-v${RELEASE_VERSION}-${stamp}.json`);localStorage.setItem('debt-free-last-backup',new Date().toISOString());setMessage('Backup downloaded successfully.')}
+ const exportBackup=()=>{const current=readStoredData();if(!validateData(current)){setMessage('There is no valid Debt Free data to back up yet.');return}const now=new Date(),stamp=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;downloadJson(backupPayload(current),`debt-free-backup-v${RELEASE_VERSION}-${stamp}.json`);localStorage.setItem('debt-free-last-backup',new Date().toISOString());window.dispatchEvent(new Event('debt-free-backup-updated'));setMessage('Backup downloaded successfully.')}
  const restoreBackup=async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;try{const parsed=JSON.parse(await file.text()),incoming=parsed?.schema===BACKUP_SCHEMA?parsed.data:parsed?.data||parsed;if(!validateData(incoming))throw new Error('invalid');const current=readStoredData();if(validateData(current)){const stamp=new Date().toISOString().replace(/[:.]/g,'-');downloadJson(backupPayload(current),`debt-free-pre-restore-${stamp}.json`)}localStorage.setItem(STORAGE_KEY,JSON.stringify(incoming));localStorage.setItem('debt-free-last-restore',new Date().toISOString());window.location.reload()}catch{setMessage('That file does not look like a valid Debt Free backup. Nothing was changed.')}}
  const lastBackup=localStorage.getItem('debt-free-last-backup')
  const navButton=<button className="nav settings-nav" type="button" onClick={()=>setOpen(true)}><Settings size={17}/>Settings</button>

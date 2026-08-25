@@ -2,6 +2,17 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.7.1 — Reliability and data integrity
+
+- Switched default dates and billing-cycle calculations to the user's device-local calendar.
+- Show cash shortfalls instead of hiding negative Safe to Spend results.
+- Protected account and bill deletion when bill-payment history is linked.
+- Defaulted bill payments to the remaining cycle amount and added overpayment and insufficient-funds confirmations.
+- Replaced misleading empty-dashboard projections with honest not-yet-calculated states.
+- Strengthened required fields, backup validation and payment counts.
+- Refreshed setup progress immediately after backup and excluded future entries from spending trends.
+- Improved modal focus handling and mobile navigation keyboard behavior.
+
 ## v0.7.0 — Financial clarity and guided setup
 
 - Added recurring-bill payment logging with partial/paid status, balance updates, and payment history.

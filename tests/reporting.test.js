@@ -23,6 +23,7 @@ test('builds calendar-month spending trends and month-over-month comparison',()=
     {date:'2026-07-08T12:00:00.000Z',amount:100},
     {date:'2026-08-02T12:00:00.000Z',amount:75},
     {date:'2026-08-20T12:00:00.000Z',amount:75},
+    {date:'2026-08-26T12:00:00.000Z',amount:900},
   ]
   assert.deepEqual(monthlyTrend(spending,2,now).map(x=>[x.id,x.total]),[['2026-07',100],['2026-08',150]])
   assert.deepEqual(trendComparison(spending,now),{previous:100,current:150,change:50,percent:50})
