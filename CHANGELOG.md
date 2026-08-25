@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.15 — Account-aware spending
+
+- Group Spending by account as well as category or merchant.
+- Show which account or card funded each category and merchant detail.
+- Show category and merchant context within account groups.
+
 ## v0.5.14 — Spending breakdown and merchant memory
 
 - Group spending by category or merchant and inspect the totals underneath each group.
