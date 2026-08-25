@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.14 — Spending breakdown and merchant memory
+
+- Group spending by category or merchant and inspect the totals underneath each group.
+- Sort spending by highest total, name or most recent activity.
+- Reuse frequently entered merchants from local expense history.
+
 ## v0.5.13 — Credit score history
 
 - Added manual credit-score history under Insights with source, bureau, model, date, and score.
