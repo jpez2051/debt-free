@@ -9,7 +9,7 @@ test('every transaction date field uses the click-to-open calendar control', asy
 
   assert.match(app, /function DateInput\(/)
   assert.match(app, /showPicker\?\.\(\)/)
-  assert.equal((app.match(/<DateInput /g) || []).length, 2)
+  assert.equal((app.match(/<DateInput /g) || []).length, 3)
   assert.equal((app.match(/<input type="date"/g) || []).length, 1)
   assert.equal((cardTransform.match(/<input type=\\"date\\"/g) || []).length, 0)
   assert.equal((transferTransform.match(/<input type=\\"date\\"/g) || []).length, 0)

@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.13 — Credit score history
+
+- Added manual credit-score history under Insights with source, bureau, model, date, and score.
+- Defaulted Aura entries to Equifax VantageScore 3.0, matching Aura's disclosed score source.
+- Added Credit Karma and Citi presets while keeping unlike scoring models in separate comparisons.
+- Added responsive score-entry and history layouts.
+
 ## v0.5.12 — Expense and interest entry
 
 - Renamed user-facing purchase actions to expense actions so non-purchase card charges fit naturally.
