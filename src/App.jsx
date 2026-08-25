@@ -3,6 +3,9 @@ import { ArrowDown, ArrowUp, Banknote, BarChart3, CalendarDays, Check, CreditCar
 import { orderDebts, projectedDate, simulatePayoff } from './lib/payoff.js'
 import { upcomingObligations } from './lib/obligations.js'
 import { filterByReportingPeriod, REPORTING_PERIODS } from './lib/reporting.js'
+import SpendingTrends from './SpendingTrends.jsx'
+import SetupGuide from './SetupGuide.jsx'
+import CreditScoreChart from './CreditScoreChart.jsx'
 
 const VERSION='0.5.0'
 const STORAGE_KEY='debt-free-v040'
@@ -10,12 +13,12 @@ const categories=['Groceries','Dining','Fuel','Shopping','Subscriptions','Entert
 const starter={
  accounts:[],
  transactions:[],
- payments:[], bills:[], creditScores:[], strategy:'avalanche',extra:250
+ payments:[], bills:[], billPayments:[], creditScores:[], strategy:'avalanche',extra:250
 }
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0})
 const money2=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
 const dateValue=()=>new Date().toISOString().slice(0,10)
-function load(){try{const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));return saved?{...starter,...saved,transactions:saved.transactions||[],payments:saved.payments||[],accounts:saved.accounts||[],bills:saved.bills||[],creditScores:saved.creditScores||[]}:starter}catch{return starter}}
+function load(){try{const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));return saved?{...starter,...saved,transactions:saved.transactions||[],payments:saved.payments||[],accounts:saved.accounts||[],bills:saved.bills||[],billPayments:saved.billPayments||[],creditScores:saved.creditScores||[]}:starter}catch{return starter}}
 function save(state){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
 const nav=[['dashboard','Dashboard',Home],['accounts','Accounts',WalletCards],['transactions','Activity',ReceiptText],['bills','Bills',CalendarDays],['debts','Debts',CreditCard],['payoff','Payoff Plan',Target],['spending','Spending',BarChart3],['insights','Insights',Lightbulb]]
 
@@ -27,12 +30,12 @@ export default function App(){
  const payoffDebts=cards.map(a=>({id:a.id,name:a.name,balance:a.balance,apr:a.apr||0,minimum:a.minimum||0}))
  const plan=useMemo(()=>simulatePayoff(payoffDebts,data.extra,data.strategy),[data.accounts,data.extra,data.strategy]); const alt=useMemo(()=>simulatePayoff(payoffDebts,data.extra,data.strategy==='avalanche'?'snowball':'avalanche'),[data.accounts,data.extra,data.strategy])
  const payoffDate=plan.paidOff?projectedDate(plan.months):null
- const allPurchases=data.transactions.filter(t=>t.kind==='purchase'),reportingTransactions=filterByReportingPeriod(data.transactions,reportPeriod),purchases=reportingTransactions.filter(t=>t.kind==='purchase'), incomes=reportingTransactions.filter(t=>t.kind==='income'),reportingPayments=filterByReportingPeriod(data.payments,reportPeriod)
- const spend=purchases.reduce((s,t)=>s+Number(t.amount),0), income=incomes.reduce((s,t)=>s+Number(t.amount),0), paid=reportingPayments.reduce((s,p)=>s+Number(p.amount),0)
+ const allPurchases=data.transactions.filter(t=>t.kind==='purchase'),allBillSpending=(data.billPayments||[]).map(p=>({...p,merchant:p.billName,category:p.category||'Other',accountId:p.bankId,kind:'purchase'})),allSpendingEntries=[...allPurchases,...allBillSpending],reportingTransactions=filterByReportingPeriod(data.transactions,reportPeriod),purchases=reportingTransactions.filter(t=>t.kind==='purchase'),spendingEntries=filterByReportingPeriod(allSpendingEntries,reportPeriod),incomes=reportingTransactions.filter(t=>t.kind==='income'),reportingPayments=filterByReportingPeriod(data.payments,reportPeriod),reportingBillPayments=filterByReportingPeriod(data.billPayments||[],reportPeriod)
+ const spend=purchases.reduce((s,t)=>s+Number(t.amount),0), income=incomes.reduce((s,t)=>s+Number(t.amount),0), paid=reportingPayments.reduce((s,p)=>s+Number(p.amount),0),billsPaid=reportingBillPayments.reduce((s,p)=>s+Number(p.amount),0)
  const monthlyBills=data.bills.filter(b=>b.active!==false).reduce((s,b)=>s+Number(b.amount||0),0)
- const obligations=useMemo(()=>upcomingObligations({cards,bills:data.bills,payments:data.payments,accounts:data.accounts}),[data.accounts,data.bills,data.payments]),remainingMinimums=obligations.filter(x=>x.kind==='card').reduce((sum,x)=>sum+x.remaining,0)
- const safeToSpend=Math.max(0,cash-monthlyBills-remainingMinimums)
- const byCategory=categories.map(c=>({name:c,total:purchases.filter(t=>t.category===c).reduce((s,t)=>s+Number(t.amount),0)})).filter(x=>x.total>0).sort((a,b)=>b.total-a.total)
+ const obligations=useMemo(()=>upcomingObligations({cards,bills:data.bills,payments:data.payments,billPayments:data.billPayments||[],accounts:data.accounts}),[data.accounts,data.bills,data.payments,data.billPayments]),remainingMinimums=obligations.filter(x=>x.kind==='card').reduce((sum,x)=>sum+x.remaining,0),remainingBills=obligations.filter(x=>x.kind==='bill').reduce((sum,x)=>sum+x.remaining,0)
+ const safeToSpend=Math.max(0,cash-remainingBills-remainingMinimums)
+ const byCategory=categories.map(c=>({name:c,total:spendingEntries.filter(t=>t.category===c).reduce((s,t)=>s+Number(t.amount),0)})).filter(x=>x.total>0).sort((a,b)=>b.total-a.total)
  const merchantSuggestions=useMemo(()=>{const known=new Map();allPurchases.forEach(t=>{const name=t.merchant?.trim();if(!name)return;const key=name.toLocaleLowerCase(),item=known.get(key)||{name,count:0,last:0};item.count+=1;item.last=Math.max(item.last,new Date(t.date).getTime()||0);known.set(key,item)});return [...known.values()].sort((a,b)=>b.count-a.count||b.last-a.last||a.name.localeCompare(b.name)).map(x=>x.name)},[data.transactions])
  const discretionary=byCategory.filter(x=>['Dining','Shopping','Subscriptions','Entertainment','Travel'].includes(x.name)).reduce((s,x)=>s+x.total,0), top=byCategory[0]
  const overallLimit=cards.reduce((s,a)=>s+Number(a.limit||0),0), utilization=overallLimit?Math.round(cardDebt/overallLimit*100):0
@@ -43,6 +46,7 @@ export default function App(){
  const openPayment=()=>{setForm({date:dateValue(),historical:false,bankId:checking[0]?.id||cashAccounts[0]?.id||'',cardId:cards[0]?.id||''});setModal('payment')}
  const openAccountAdd=()=>{setForm({type:'checking'});setModal('account')}, openAccountEdit=a=>{setForm({...a});setModal('account')}
  const openBill=b=>{setForm(b?{...b}:{active:true,dueDay:1,category:'Utilities',accountId:checking[0]?.id||cashAccounts[0]?.id||''});setModal('bill')}
+ const openBillPayment=b=>{setForm({billId:b.id,billName:b.name,category:b.category,amount:b.amount,date:dateValue(),bankId:b.accountId||checking[0]?.id||cashAccounts[0]?.id||'',historical:false});setModal('billPayment')}
 
  const saveTransaction=(kind,e)=>{e.preventDefault();const amount=Number(form.amount),a=account(form.accountId);if(!a||!amount||amount<=0)return
    const old=form.id?data.transactions.find(t=>t.id===form.id):null;let accounts=data.accounts
@@ -54,10 +58,12 @@ export default function App(){
  const addPayment=e=>{e.preventDefault();const amount=Number(form.amount),card=account(form.cardId),bank=account(form.bankId);if(!card||!bank||card.type!=='credit'||bank.type==='credit'||!amount||amount<=0)return;const historical=Boolean(form.historical),actual=historical?amount:Math.min(amount,Number(card.balance));const accounts=historical?data.accounts:data.accounts.map(a=>a.id===card.id?{...a,balance:Math.max(0,Number(a.balance)-actual)}:a.id===bank.id?{...a,balance:Number(a.balance)-actual}:a);const p={id:crypto.randomUUID(),date:new Date(`${form.date||dateValue()}T12:00:00`).toISOString(),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:actual,kind:'payment',historical};update({...data,accounts,payments:[p,...data.payments]});setModal(null);setForm({})}
  const saveAccount=e=>{e.preventDefault();if(!form.name?.trim())return;const item={id:form.id||crypto.randomUUID(),name:form.name.trim(),type:form.type||'checking',balance:Number(form.balance||0),apr:Number(form.apr||0),minimum:Number(form.minimum||0),limit:Number(form.limit||0),dueDay:Number(form.dueDay||0),statementDay:Number(form.statementDay||0)};update({...data,accounts:form.id?data.accounts.map(a=>a.id===form.id?item:a):[...data.accounts,item]});setModal(null);setForm({})}
  const saveBill=e=>{e.preventDefault();if(!form.name?.trim()||!Number(form.amount))return;const item={id:form.id||crypto.randomUUID(),name:form.name.trim(),amount:Number(form.amount),dueDay:Number(form.dueDay||1),category:form.category||'Other',accountId:form.accountId||'',active:form.active!==false};update({...data,bills:form.id?data.bills.map(b=>b.id===form.id?item:b):[...data.bills,item]});setModal(null);setForm({})}
+ const saveBillPayment=e=>{e.preventDefault();const bill=data.bills.find(b=>b.id===form.billId),bank=account(form.bankId),amount=Number(form.amount);if(!bill||!bank||bank.type==='credit'||!amount||amount<=0)return;const historical=Boolean(form.historical),item={id:crypto.randomUUID(),billId:bill.id,billName:bill.name,category:bill.category||'Other',bankId:bank.id,bankName:bank.name,date:new Date(`${form.date||dateValue()}T12:00:00`).toISOString(),amount,historical},accounts=historical?data.accounts:data.accounts.map(a=>a.id===bank.id?{...a,balance:Number(a.balance)-amount}:a);update({...data,accounts,billPayments:[item,...(data.billPayments||[])]});setModal(null);setForm({})}
  const removeTx=t=>{if(!confirm(`Remove ${t.merchant} for ${money2.format(t.amount)}?${t.historical?'':' This reverses its balance effect.'}`))return;let accounts=data.accounts;if(!t.historical){accounts=accounts.map(a=>a.id!==t.accountId?a:{...a,balance:t.kind==='income'?Number(a.balance)-Number(t.amount):a.type==='credit'?Math.max(0,Number(a.balance)-Number(t.amount)):Number(a.balance)+Number(t.amount)})}update({...data,accounts,transactions:data.transactions.filter(x=>x.id!==t.id)})}
  const removePayment=p=>{if(!confirm(`Remove the ${money2.format(p.amount)} payment to ${p.cardName}?${p.historical?'':' This restores both balances.'}`))return;let accounts=data.accounts;if(!p.historical)accounts=accounts.map(a=>a.id===p.bankId?{...a,balance:Number(a.balance)+Number(p.amount)}:a.id===p.cardId?{...a,balance:Number(a.balance)+Number(p.amount)}:a);update({...data,accounts,payments:data.payments.filter(x=>x.id!==p.id)})}
  const removeAccount=a=>{const links=data.transactions.filter(t=>t.accountId===a.id).length+data.payments.filter(p=>p.bankId===a.id||p.cardId===a.id).length+data.bills.filter(b=>b.accountId===a.id).length;if(links){alert(`This account has ${links} linked record(s). Remove or reassign those first.`);return}if(confirm(`Remove ${a.name}?`))update({...data,accounts:data.accounts.filter(x=>x.id!==a.id)})}
  const removeBill=b=>{if(confirm(`Remove ${b.name}?`))update({...data,bills:data.bills.filter(x=>x.id!==b.id)})}
+ const removeBillPayment=p=>{if(!confirm(`Remove the ${money2.format(p.amount)} payment to ${p.billName}?${p.historical?'':' This restores the account balance.'}`))return;const accounts=p.historical?data.accounts:data.accounts.map(a=>a.id===p.bankId?{...a,balance:Number(a.balance)+Number(p.amount)}:a);update({...data,accounts,billPayments:(data.billPayments||[]).filter(x=>x.id!==p.id)})}
  const setExtra=v=>update({...data,extra:Number(v||0)}), choose=s=>update({...data,strategy:s})
  const addCreditScore=entry=>update({...data,creditScores:[{...entry,id:crypto.randomUUID()},...creditScores]})
  const removeCreditScore=id=>{if(confirm('Remove this credit-score entry?'))update({...data,creditScores:creditScores.filter(x=>x.id!==id)})}
@@ -89,6 +95,7 @@ function Stat({label,value,note}){return <div><span>{label}</span><strong>{value
 function Panel({title,kicker,children}){return <section className="panel content-panel"><span className="kicker">{kicker}</span><h2>{title}</h2>{children}</section>}
 function Row({left,right,sub}){return <div className="row"><div><strong>{left}</strong>{sub&&<small>{sub}</small>}</div><b>{right}</b></div>}
 function ActionRow({left,right,sub,onEdit,onRemove}){return <div className="row action-row"><div><strong>{left}</strong>{sub&&<small>{sub}</small>}</div><div className="row-tail"><b>{right}</b>{onEdit&&<IconButton label="Edit" onClick={onEdit}><Pencil size={14}/></IconButton>}{onRemove&&<IconButton label="Remove" danger onClick={onRemove}><Trash2 size={14}/></IconButton>}</div></div>}
+function BillStatusRow({bill,obligation,onPay,onEdit,onRemove}){const paid=obligation&&!obligation.remaining;return <div className="row action-row bill-status-row"><div><strong>{bill.name} · {bill.category}</strong><small>{obligation?`${money2.format(obligation.required)} due ${obligation.dueDate.toLocaleDateString()}${obligation.paid?` · ${money2.format(obligation.paid)} paid`:''}`:`Due day ${bill.dueDay}`} · {bill.active===false?'Paused':obligation?.accountName||'Unassigned'}</small></div><div className="row-tail"><b className={paid?'paid-label':''}>{paid?'Paid':money2.format(obligation?.remaining??bill.amount)}</b>{bill.active!==false&&!paid&&<button type="button" className="mini bill-pay" onClick={onPay}>Log payment</button>}<IconButton label="Edit" onClick={onEdit}><Pencil size={14}/></IconButton><IconButton label="Remove" danger onClick={onRemove}><Trash2 size={14}/></IconButton></div></div>}
 function IconButton({label,onClick,danger,children}){return <button type="button" className={`icon-button${danger?' danger':''}`} aria-label={label} title={label} onClick={onClick}>{children}</button>}
 function Insight({text}){return <div className="insight-card"><div><Sparkles size={15}/></div><p>{text}</p></div>}
 function Empty({text='Nothing logged yet.'}){return <div className="empty">{text}</div>}

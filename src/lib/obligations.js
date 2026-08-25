@@ -21,9 +21,16 @@ export function cardMinimumObligation(card,payments,now=new Date()){
   return {id:`card-${card.id}`,kind:'card',name:`${card.name} minimum`,accountName:card.name,dueDate,required,paid,remaining:Math.max(0,required-paid)}
 }
 
-export function upcomingObligations({cards,bills,payments,accounts,now=new Date()}){
+export function billObligation(bill,billPayments,accountName,now=new Date()){
+  const required=Math.max(0,Number(bill.amount)||0),dueDate=upcomingDueDate(bill.dueDay,now)
+  const previousDue=monthDate(dueDate.getFullYear(),dueDate.getMonth()-1,bill.dueDay),endOfToday=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999)
+  const paid=Math.min(required,billPayments.filter(p=>p.billId===bill.id&&new Date(p.date)>previousDue&&new Date(p.date)<=endOfToday).reduce((sum,p)=>sum+Math.max(0,Number(p.amount)||0),0))
+  return {id:`bill-${bill.id}`,kind:'bill',name:bill.name,accountName,dueDate,required,paid,remaining:Math.max(0,required-paid)}
+}
+
+export function upcomingObligations({cards,bills,payments,billPayments=[],accounts,now=new Date()}){
   const accountNames=Object.fromEntries(accounts.map(a=>[a.id,a.name]))
-  const billItems=bills.filter(b=>b.active!==false).map(b=>({id:`bill-${b.id}`,kind:'bill',name:b.name,accountName:accountNames[b.accountId]||'Unassigned',dueDate:upcomingDueDate(b.dueDay,now),required:Math.max(0,Number(b.amount)||0),paid:0,remaining:Math.max(0,Number(b.amount)||0)}))
+  const billItems=bills.filter(b=>b.active!==false).map(b=>billObligation(b,billPayments,accountNames[b.accountId]||'Unassigned',now))
   const cardItems=cards.map(card=>cardMinimumObligation(card,payments,now)).filter(Boolean)
   return [...billItems,...cardItems].sort((a,b)=>a.dueDate-b.dueDate||a.name.localeCompare(b.name))
 }

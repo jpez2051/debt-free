@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { cardMinimumObligation, upcomingDueDate, upcomingObligations } from '../src/lib/obligations.js'
+import { billObligation, cardMinimumObligation, upcomingDueDate, upcomingObligations } from '../src/lib/obligations.js'
 
 const now=new Date(2026,7,25,12)
 const card={id:'visa',name:'Visa',type:'credit',balance:1200,minimum:110,dueDay:18}
@@ -46,4 +46,14 @@ test('bills and every card minimum are combined in due-date order',()=>{
   const items=upcomingObligations({cards:[card,{...card,id:'mc',name:'Mastercard',dueDay:8,minimum:55}],bills:[{id:'rent',name:'Rent',amount:900,dueDay:1,accountId:'checking',active:true}],payments:[],accounts:[{id:'checking',name:'Checking'}],now})
   assert.deepEqual(items.map(x=>x.name),['Rent','Mastercard minimum','Visa minimum'])
   assert.equal(items.filter(x=>x.kind==='card').length,2)
+})
+
+test('bill obligations track partial and complete payments for the current cycle',()=>{
+  const bill={id:'rent',name:'Rent',amount:900,dueDay:1}
+  const partial=billObligation(bill,[{billId:'rent',amount:400,date:'2026-08-20T12:00:00.000Z'}],'Checking',now)
+  assert.equal(partial.paid,400)
+  assert.equal(partial.remaining,500)
+  const paid=billObligation(bill,[{billId:'rent',amount:950,date:'2026-08-20T12:00:00.000Z'}],'Checking',now)
+  assert.equal(paid.paid,900)
+  assert.equal(paid.remaining,0)
 })

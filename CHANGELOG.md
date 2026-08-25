@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.7.0 — Financial clarity and guided setup
+
+- Added recurring-bill payment logging with partial/paid status, balance updates, and payment history.
+- Made Safe to Spend reserve only unpaid bills and card minimums.
+- Added month-over-month and six-month spending trends, including paid recurring bills.
+- Added a guided setup checklist and clearer required-field validation.
+- Added comparable credit-score trend charts by source, bureau, and scoring model.
+
 ## v0.6.0 — Trustworthy reporting foundation
 
 - Added explicit This month, Last 30 days and All time reporting periods.
