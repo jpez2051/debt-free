@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.6.0 — Trustworthy reporting foundation
+
+- Added explicit This month, Last 30 days and All time reporting periods.
+- Replaced sample finances with safe first-account onboarding for new browsers.
+- Applied reporting periods consistently to financial activity and improved dialog accessibility.
+- Preserved existing browser data without migration or key changes.
+
 ## v0.5.18 — Card minimum obligations
 
 - Added all active card minimums to Upcoming obligations alongside bills.
