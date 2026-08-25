@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.5.18 — Card minimum obligations
+
+- Added all active card minimums to Upcoming obligations alongside bills.
+- Track partial and paid minimum status from current-cycle card payments.
+- Reserve only unpaid minimums in Safe to spend.
+
 ## v0.5.17 — Unified themes and icon colors
 
 - Fixed black mobile-navigation icons in light mode.

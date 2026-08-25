@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Banknote, BarChart3, CalendarDays, Check, CreditCard, Home, Lightbulb, Pencil, Plus, ReceiptText, Sparkles, Target, Trash2, TrendingUp, WalletCards, X } from 'lucide-react'
 import { orderDebts, projectedDate, simulatePayoff } from './lib/payoff.js'
+import { upcomingObligations } from './lib/obligations.js'
 
 const VERSION='0.5.0'
 const STORAGE_KEY='debt-free-v040'
@@ -28,7 +29,8 @@ export default function App(){
  const purchases=data.transactions.filter(t=>t.kind==='purchase'), incomes=data.transactions.filter(t=>t.kind==='income')
  const spend=purchases.reduce((s,t)=>s+Number(t.amount),0), income=incomes.reduce((s,t)=>s+Number(t.amount),0), paid=data.payments.reduce((s,p)=>s+Number(p.amount),0)
  const monthlyBills=data.bills.filter(b=>b.active!==false).reduce((s,b)=>s+Number(b.amount||0),0)
- const safeToSpend=Math.max(0,cash-monthlyBills-minimums)
+ const obligations=useMemo(()=>upcomingObligations({cards,bills:data.bills,payments:data.payments,accounts:data.accounts}),[data.accounts,data.bills,data.payments]),remainingMinimums=obligations.filter(x=>x.kind==='card').reduce((sum,x)=>sum+x.remaining,0)
+ const safeToSpend=Math.max(0,cash-monthlyBills-remainingMinimums)
  const byCategory=categories.map(c=>({name:c,total:purchases.filter(t=>t.category===c).reduce((s,t)=>s+Number(t.amount),0)})).filter(x=>x.total>0).sort((a,b)=>b.total-a.total)
  const merchantSuggestions=useMemo(()=>{const known=new Map();purchases.forEach(t=>{const name=t.merchant?.trim();if(!name)return;const key=name.toLocaleLowerCase(),item=known.get(key)||{name,count:0,last:0};item.count+=1;item.last=Math.max(item.last,new Date(t.date).getTime()||0);known.set(key,item)});return [...known.values()].sort((a,b)=>b.count-a.count||b.last-a.last||a.name.localeCompare(b.name)).map(x=>x.name)},[data.transactions])
  const discretionary=byCategory.filter(x=>['Dining','Shopping','Subscriptions','Entertainment','Travel'].includes(x.name)).reduce((s,x)=>s+x.total,0), top=byCategory[0]

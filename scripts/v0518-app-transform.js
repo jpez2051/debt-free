@@ -1,0 +1,6 @@
+function replaceOrThrow(code,before,after,label){if(!code.includes(before))throw new Error(`v0.5.18 transform failed: ${label}`);return code.replace(before,after)}
+export function transformAppV0518(source){
+  let code=replaceOrThrow(source,"const VERSION='0.5.17'","const VERSION='0.5.18'",'version')
+  code=replaceOrThrow(code,'Cash less recurring bills and card minimums','Cash less recurring bills and unpaid card minimums','safe-to-spend note')
+  return replaceOrThrow(code,"data.bills.length?data.bills.filter(b=>b.active!==false).sort((a,b)=>a.dueDay-b.dueDay).slice(0,5).map(b=><Row key={b.id} left={b.name} right={money.format(b.amount)} sub={`Due day ${b.dueDay} · ${account(b.accountId)?.name||'Unassigned'}`}/>):<Empty text=\"Add recurring bills to see what your cash is already committed to.\"/>","obligations.length?obligations.map(item=><Row key={item.id} left={item.name} right={item.kind==='card'&&!item.remaining?'Paid':money.format(item.remaining)} sub={item.kind==='card'?`${money.format(item.required)} minimum · ${item.paid?`${money.format(item.paid)} paid · `:''}Due ${item.dueDate.toLocaleDateString()}`:`Due ${item.dueDate.toLocaleDateString()} · ${item.accountName}`}/>):<Empty text=\"Add recurring bills or card minimums to see committed cash.\"/>",'upcoming obligations')
+}
