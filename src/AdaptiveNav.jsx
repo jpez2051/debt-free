@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BarChart3, Home, Menu, Target, WalletCards, X } from 'lucide-react'
 
@@ -19,6 +19,7 @@ function clickSidebar(label){
 export default function AdaptiveNav(){
   const [open,setOpen]=useState(null)
   const [active,setActive]=useState('home')
+  const sheet=useRef(null)
 
   useEffect(()=>{
     const observer=new MutationObserver(()=>{
@@ -32,7 +33,7 @@ export default function AdaptiveNav(){
     return()=>observer.disconnect()
   },[])
 
-  useEffect(()=>{if(!open)return;const close=e=>{if(e.key==='Escape')setOpen(null)};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[open])
+  useEffect(()=>{if(!open)return;const opener=document.activeElement;sheet.current?.querySelector('button')?.focus();const close=e=>{if(e.key==='Escape')setOpen(null);if(e.key==='Tab'){const items=[...sheet.current.querySelectorAll('button')],first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}};document.addEventListener('keydown',close);return()=>{document.removeEventListener('keydown',close);opener?.focus?.()}},[open])
 
   const chooseGroup=group=>{
     if(group.items.length===1){clickSidebar(group.items[0]);setOpen(null);return}
@@ -41,7 +42,7 @@ export default function AdaptiveNav(){
 
   const navLayer=<>
     {open&&<div className="mobile-nav-scrim" onClick={()=>setOpen(null)}/>} 
-    {open&&<section className="mobile-nav-sheet" role="dialog" aria-modal="true" aria-label={`${groups.find(g=>g.id===open)?.label} navigation`}>
+    {open&&<section ref={sheet} className="mobile-nav-sheet" role="dialog" aria-modal="true" aria-label={`${groups.find(g=>g.id===open)?.label} navigation`}>
       <div className="mobile-nav-sheet-head"><strong>{groups.find(g=>g.id===open)?.label}</strong><button type="button" onClick={()=>setOpen(null)} aria-label="Close"><X size={18}/></button></div>
       {groups.find(g=>g.id===open)?.items.map(item=><button type="button" key={item} onClick={()=>{clickSidebar(item);setOpen(null)}}>{item}</button>)}
     </section>}

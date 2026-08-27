@@ -2,6 +2,19 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.0 — Financial reliability and recovery
+
+- Separate original statement minimums from current balances; keep extra payments on an explicitly selected statement and support corrected allocations.
+- Preserve distinct recurring-bill occurrences, overdue commitments, and expected/actual amounts. Keep historical invoices unchanged when future estimates change.
+- Rename Safe to Spend to Cash after tracked obligations, explain its limitations, and remove the indefinite extra reserve for card-funded subscriptions.
+- Default new payoff plans to zero extra and expose forecast assumptions.
+- Add refunds, signed credit balances, explained balance reconciliation, and adjustment history.
+- Preserve entered calendar dates, reject future completed transactions, and compare spending over matching elapsed periods with net refunds.
+- Validate backup identities/references, detect stale tabs, retain recovery snapshots, and keep forms open when saving fails.
+- Add keyboard focus containment to Settings/mobile navigation and responsive controls for the new forms.
+- Pin dependency versions and commit a lockfile; add end-to-end domain workflows, actual form-handler tests, and server rendering of each main screen.
+- Flag imported statement/bill assignments for user review; do not silently reinterpret historical financial facts. Full transform consolidation and Firebase remain deferred.
+
 ## v0.8.1 — Clearer minimum-payment status
 
 - Show the remaining amount due or “Minimum met” for card obligations.

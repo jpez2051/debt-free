@@ -18,6 +18,7 @@ import { transformAppV070 } from './scripts/v070-app-transform.js'
 import { transformAppV071 } from './scripts/v071-app-transform.js'
 import { transformAppV080 } from './scripts/v080-app-transform.js'
 import { transformAppV081 } from './scripts/v081-app-transform.js'
+import { transformAppV090 } from './scripts/v090-app-transform.js'
 
 export default defineConfig({
   base: '/debt-free/',
@@ -26,7 +27,7 @@ export default defineConfig({
     enforce: 'pre',
     transform(code, id) {
       if (!id.endsWith('/src/App.jsx')) return null
-      return transformAppV081(transformAppV080(transformAppV071(transformAppV070(transformAppV060(transformAppV0518(transformAppV0517(transformAppV0516(transformAppV0515(transformAppV0514(transformAppV0513(transformAppV0512(transformAppV0511(transformAppV0510(transformAppV058(transformAppV057(transformAppV056(transformAppV055(transformAppV054(code)))))))))))))))))))
+      return [transformAppV054,transformAppV055,transformAppV056,transformAppV057,transformAppV058,transformAppV0510,transformAppV0511,transformAppV0512,transformAppV0513,transformAppV0514,transformAppV0515,transformAppV0516,transformAppV0517,transformAppV0518,transformAppV060,transformAppV070,transformAppV071,transformAppV080,transformAppV081,transformAppV090].reduce((source,transform)=>transform(source),code)
     },
   }],
 })

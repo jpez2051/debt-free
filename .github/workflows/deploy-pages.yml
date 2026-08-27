@@ -25,9 +25,13 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Verify release
-        run: npm run check
+        run: pnpm run check
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:

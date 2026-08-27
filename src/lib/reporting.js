@@ -11,7 +11,7 @@ export function reportingStart(period,now=new Date()){
 }
 
 export function inReportingPeriod(item,period,now=new Date()){
-  const date=new Date(item?.date)
+  const date=new Date(item?.localDate?`${item.localDate}T12:00:00`:item?.date)
   if(Number.isNaN(date.getTime()))return false
   const start=reportingStart(period,now)
   const end=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999)
@@ -24,10 +24,10 @@ export function filterByReportingPeriod(items,period,now=new Date()){
 
 export function monthlyTrend(items,months=6,now=new Date()){
   const endOfToday=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999)
-  return Array.from({length:months},(_,index)=>{const offset=months-1-index,date=new Date(now.getFullYear(),now.getMonth()-offset,1,12),year=date.getFullYear(),month=date.getMonth(),total=items.filter(item=>{const d=new Date(item.date);return !Number.isNaN(d.getTime())&&d<=endOfToday&&d.getFullYear()===year&&d.getMonth()===month}).reduce((sum,item)=>sum+Math.max(0,Number(item.amount)||0),0);return {id:`${year}-${String(month+1).padStart(2,'0')}`,label:date.toLocaleDateString('en-US',{month:'short'}),total}})
+  return Array.from({length:months},(_,index)=>{const offset=months-1-index,date=new Date(now.getFullYear(),now.getMonth()-offset,1,12),year=date.getFullYear(),month=date.getMonth(),total=items.filter(item=>{const d=new Date(item.localDate?`${item.localDate}T12:00:00`:item.date);return !Number.isNaN(d.getTime())&&d<=endOfToday&&d.getFullYear()===year&&d.getMonth()===month}).reduce((sum,item)=>sum+Math.round((Number(item.amount)||0)*100),0)/100;return {id:`${year}-${String(month+1).padStart(2,'0')}`,label:date.toLocaleDateString('en-US',{month:'short'}),total}})
 }
 
 export function trendComparison(items,now=new Date()){
-  const months=monthlyTrend(items,2,now),previous=months[0].total,current=months[1].total,change=current-previous,percent=previous?change/previous*100:null
+  const priorMonth=new Date(now.getFullYear(),now.getMonth()-1,1,12),cutoff=Math.min(now.getDate(),new Date(now.getFullYear(),now.getMonth(),0).getDate()),comparable=items.filter(item=>{const d=new Date(item.localDate?`${item.localDate}T12:00:00`:item.date);return d.getFullYear()!==priorMonth.getFullYear()||d.getMonth()!==priorMonth.getMonth()||d.getDate()<=cutoff}),months=monthlyTrend(comparable,2,now),previous=months[0].total,current=months[1].total,change=Math.round((current-previous)*100)/100,percent=previous>0?change/previous*100:null
   return {previous,current,change,percent}
 }

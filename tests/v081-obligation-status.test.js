@@ -37,5 +37,5 @@ test('complete release pipeline renders minimum met with actual payment detail',
   assert.match(output,/Minimum met ✓/)
   assert.match(output,/money\.format\(item\.remaining\)\} due/)
   assert.match(output,/money\.format\(item\.actualPaid\)/)
-  assert.match(output,/const VERSION='0\.8\.1'/)
+  assert.match(output,/const VERSION='0\.9\.0'/)
 })
