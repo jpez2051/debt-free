@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.9.0**
+**Current build: v0.9.1**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.9.0 can do
+## What v0.9.1 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.
@@ -34,6 +34,10 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Detect conflicting tabs, handle failed saves, and retain local recovery snapshots.
 
 ## Important changes in v0.9.0
+
+v0.9.1 simplifies Upcoming obligations to one row per credit card. Overdue minimums take priority; a completed statement stays visible through its due date. Other unpaid/imported statements are flagged with a link to Debts. This is display-only: no records or cash calculations are changed.
+
+For a subscription price increase, edit the bill's Expected amount for newly generated occurrences. Under Bill occurrences, Confirm actual on the first affected occurrence, then log its payment/charge once. Existing occurrences and historical payments retain their previous amounts. Use the exact billed amount, including tax where applicable.
 
 - Under **Debts → Statements**, confirm imported statement dates/minimums and review payment allocations. Older records did not preserve every statement fact; the app flags those assignments instead of silently guessing they are verified.
 - Add a new statement when your issuer provides it. Extra payments stay on the selected statement. If a new minimum includes past-due minimums, explicitly carry those earlier obligations forward to avoid reserving them twice.

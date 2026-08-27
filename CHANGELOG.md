@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.1 — One dashboard row per card
+
+- Select one relevant statement per card for Upcoming obligations: oldest unpaid overdue first, otherwise the nearest upcoming due date.
+- Keep completed minimums visible through their due date; request a new statement when no upcoming one is recorded.
+- Surface other unpaid/overdue statements and imported records needing review without merging their amounts or changing history and cash calculations.
+- Add a View statements shortcut and narrow-screen wrapping for the summary rows.
+- Verify subscription price changes against the real bill-edit handler using fictional records, preserving previous invoices and payments.
+
 ## v0.9.0 — Financial reliability and recovery
 
 - Separate original statement minimums from current balances; keep extra payments on an explicitly selected statement and support corrected allocations.
