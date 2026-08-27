@@ -1,3 +1,3 @@
-export const RELEASE_VERSION = '0.9.2'
+export const RELEASE_VERSION = '0.9.3'
 export const STORAGE_KEY = 'debt-free-v040'
 export const BACKUP_SCHEMA = 'debt-free-backup-v1'

@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.3 — Filterable account activity
+
+- Add account, date range, activity type, and merchant/description search filters with a matching entry count and Reset filters.
+- Include existing card payments, recurring bill payments/charges, and balance adjustments alongside ledger activity without copying or changing records.
+- Match card payments to both source bank and destination card, displaying each payment once in All accounts. Card-funded recurring bills remain charges, not card payments.
+- Preserve existing expense/income/transfer edit and removal controls; link payment and adjustment records to their existing management pages.
+- Default to All time, use device-local calendar dates with inclusive custom boundaries, and show clear empty/invalid-range states. Stack filters on narrow screens.
+
 ## v0.9.2 — Explicit historical payment assignments
 
 - Stop guessing which statement an older payment satisfies. Legacy assignments require one-time confirmation because earlier releases did not record their provenance; preserve the previous link for review.
