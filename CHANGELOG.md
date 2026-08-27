@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.8.1 — Clearer minimum-payment status
+
+- Show the remaining amount due or “Minimum met” for card obligations.
+- Show actual cycle payments in supporting details, including payments above the minimum.
+- Keep extra payment display separate from minimum-credit calculations and exclude payments tagged to other cycles.
+
 ## v0.8.0 — Recurring subscriptions and card charges
 
 - Added credit cards as recurring-bill payment methods with correct card-balance increases.

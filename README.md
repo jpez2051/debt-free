@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.8.0**
+**Current build: v0.8.1**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.8.0 can do
+## What v0.8.1 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.

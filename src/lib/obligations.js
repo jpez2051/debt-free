@@ -13,12 +13,17 @@ export function cardMinimumObligation(card,payments,now=new Date()){
   if(!required)return null
   const today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12),endOfToday=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999)
   const completed=payments.filter(p=>p.cardId===card.id&&p.cycleAdvanced&&p.cycleDueDateBefore).map(p=>({...p,completedDue:new Date(`${p.cycleDueDateBefore}T12:00:00`)})).filter(p=>!Number.isNaN(p.completedDue.getTime())&&p.completedDue>=today&&new Date(p.date)<=endOfToday).sort((a,b)=>b.completedDue-a.completedDue)[0]
-  if(completed)return {id:`card-${card.id}`,kind:'card',name:`${card.name} minimum`,accountName:card.name,dueDate:completed.completedDue,required,paid:required,remaining:0}
+  if(completed){
+    const previousDue=monthDate(completed.completedDue.getFullYear(),completed.completedDue.getMonth()-1,card.dueDay||completed.completedDue.getDate())
+    const actualPaid=payments.filter(p=>p.cardId===card.id&&new Date(p.date)<=endOfToday&&(p.cycleDueDateBefore?p.cycleDueDateBefore===completed.cycleDueDateBefore:new Date(p.date)>previousDue&&new Date(p.date)<=completed.completedDue)).reduce((sum,p)=>sum+Math.max(0,Number(p.amount)||0),0)
+    return {id:`card-${card.id}`,kind:'card',name:`${card.name} minimum`,accountName:card.name,dueDate:completed.completedDue,required,paid:required,actualPaid,remaining:0}
+  }
   const savedDue=card.nextDueDate?new Date(`${card.nextDueDate}T12:00:00`):null
   const dueDate=savedDue&&!Number.isNaN(savedDue.getTime())?savedDue:upcomingDueDate(card.dueDay,now)
   const previousDue=monthDate(dueDate.getFullYear(),dueDate.getMonth()-1,card.dueDay||dueDate.getDate())
-  const paid=Math.min(required,payments.filter(p=>p.cardId===card.id&&new Date(p.date)>previousDue&&new Date(p.date)<=endOfToday).reduce((sum,p)=>sum+Math.max(0,Number(p.amount)||0),0))
-  return {id:`card-${card.id}`,kind:'card',name:`${card.name} minimum`,accountName:card.name,dueDate,required,paid,remaining:Math.max(0,required-paid)}
+  const actualPaid=payments.filter(p=>p.cardId===card.id&&new Date(p.date)>previousDue&&new Date(p.date)<=endOfToday&&(!p.cycleDueDateBefore||p.cycleDueDateBefore===`${dueDate.getFullYear()}-${String(dueDate.getMonth()+1).padStart(2,'0')}-${String(dueDate.getDate()).padStart(2,'0')}`)).reduce((sum,p)=>sum+Math.max(0,Number(p.amount)||0),0)
+  const paid=Math.min(required,actualPaid)
+  return {id:`card-${card.id}`,kind:'card',name:`${card.name} minimum`,accountName:card.name,dueDate,required,paid,actualPaid,remaining:Math.max(0,required-paid)}
 }
 
 export function billObligation(bill,billPayments,accountName,now=new Date()){
