@@ -8,7 +8,7 @@ import config from '../vite.config.js'
 const now=new Date(2026,7,27,12)
 const statement=(id,dueDate,more={})=>({id,cardId:'card',dueDate,minimum:50,needsReview:false,...more})
 const fixture=(statements=[],payments=[])=>({financeVersion:1,accounts:[{id:'card',name:'Fictional Visa',type:'credit',balance:1000},{id:'bank',name:'Fictional Checking',type:'checking',balance:2000}],cardStatements:statements,payments,bills:[],billCycles:[],billPayments:[],transactions:[],creditScores:[],adjustments:[],extra:0})
-const paid=(id,amount=50)=>({id:`payment-${id}`,statementId:id,cardId:'card',bankId:'bank',amount,localDate:'2026-08-25',date:'2026-08-25T12:00:00Z'})
+const paid=(id,amount=50)=>({id:`payment-${id}`,statementId:id,assignmentStatus:'confirmed',cardId:'card',bankId:'bank',amount,localDate:'2026-08-25',date:'2026-08-25T12:00:00Z'})
 
 test('one row per card, earliest overdue first, without merging or changing cash calculations',()=>{
   const data=fixture([statement('old','2026-07-15'),statement('current','2026-08-15'),statement('next','2026-09-15')]),before=structuredClone(data),cash=cashAfterObligations(data,now),rows=upcomingSummary(data,now)

@@ -2,6 +2,15 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.2 — Explicit historical payment assignments
+
+- Stop guessing which statement an older payment satisfies. Legacy assignments require one-time confirmation because earlier releases did not record their provenance; preserve the previous link for review.
+- Keep unassigned payments in history and overall totals, but exclude them from statement minimums. Preserve all payment amounts, dates, and account balances during reassignment.
+- Add bulk payment review under Debts: filter by card, inspect dates and amounts, and assign one or multiple payments to a statement or leave them unassigned.
+- Allow new and historical payments without a statement; default to Unassigned rather than an inferred statement. Explicit early and extra payments can count toward the same statement.
+- Warn that amounts due may be overstated until assignments are reviewed; distinguish Edit statement from Review statement.
+- Preserve a pre-v0.9.2 browser recovery snapshot on the first successful save, alongside existing backups.
+
 ## v0.9.1 — One dashboard row per card
 
 - Select one relevant statement per card for Upcoming obligations: oldest unpaid overdue first, otherwise the nearest upcoming due date.

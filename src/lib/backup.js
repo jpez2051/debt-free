@@ -23,6 +23,7 @@ export function validateData(data) {
   if((data.cardStatements||[]).some(s=>s.supersededBy&&!(data.cardStatements||[]).some(t=>t.id===s.supersededBy&&t.cardId===s.cardId&&t.dueDate>s.dueDate)))return false
   if((data.billCycles||[]).some(c=>!bill(c.billId)||!calendarDate(c.dueDate)||!amount(c.expectedAmount)||(c.actualAmount!=null&&!amount(c.actualAmount))))return false
   if(data.payments.some(p=>p.statementId&&!(data.cardStatements||[]).some(s=>s.id===p.statementId&&s.cardId===p.cardId)))return false
+  if(data.payments.some(p=>p.assignmentStatus!==undefined&&(!['confirmed','unassigned'].includes(p.assignmentStatus)||(p.assignmentStatus==='confirmed'&&!p.statementId)||(p.assignmentStatus==='unassigned'&&Boolean(p.statementId)))))return false
   if((data.billPayments||[]).some(p=>p.cycleId&&!(data.billCycles||[]).some(c=>c.id===p.cycleId&&c.billId===p.billId)))return false
   if((data.adjustments||[]).some(a=>!account(a.accountId)||!number(a.before)||!number(a.after)||!number(a.delta)||!date(a.date)||!a.reason))return false
   if(data.extra!==undefined&&!amount(data.extra))return false

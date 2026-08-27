@@ -15,6 +15,7 @@ export function upcomingSummary(data, now=new Date()) {
       additionalUnpaidCount:additionalUnpaid.length,
       additionalOverdueCount:additionalUnpaid.filter(o=>o.dateKey<today).length,
       reviewCount:data.cardStatements.filter(s=>s.cardId===card.id&&!s.supersededBy&&s.needsReview).length,
+      unassignedPaymentCount:data.payments.filter(p=>p.cardId===card.id&&p.assignmentStatus!=='confirmed').length,
     }
   })
   return [...obligations.filter(o=>o.kind==='bill'),...cards].sort((a,b)=>(a.dateKey||'9999-12-31').localeCompare(b.dateKey||'9999-12-31')||a.name.localeCompare(b.name))

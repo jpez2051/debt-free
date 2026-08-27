@@ -175,7 +175,7 @@ test('final application connects the real workflow functions and zero-extra defa
   assert.match(output,/strategy:'avalanche',extra:0/);assert.match(output,/persistState\(ready\);setData\(ready\)/)
   assert.match(output,/Cash after tracked obligations/);assert.match(output,/ReliabilityCenter data=/)
   assert.doesNotMatch(output,/nextDueDate:cycleComplete\?/)
-  assert.match(output,/statementId:target\?\.id/)
+  assert.match(output,/statementId:''/)
 })
 test('the final form handler records two payments without advancing statements',async()=>{
   const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx'),line=output.split('\n').find(l=>l.startsWith(' const addPayment='))

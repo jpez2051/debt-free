@@ -26,6 +26,7 @@ export function createRepository(storage, key=STORAGE_KEY) {
       const next=JSON.stringify(data)
       try {
         if(current){
+          if(!storage.getItem(`${key}-before-v092`))storage.setItem(`${key}-before-v092`,current)
           if(!storage.getItem(`${key}-before-v090`))storage.setItem(`${key}-before-v090`,current)
           storage.setItem(`${key}-previous`,current)
         }

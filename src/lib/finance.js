@@ -30,10 +30,14 @@ export function prepareData(source, now = new Date()) {
       else if(card.dueDay) dates.push(dueInMonth(now.getFullYear(),now.getMonth(),card.dueDay))
       for (const dueDate of new Set(dates)) data.cardStatements.push({id:`statement-${card.id}-${dueDate}`,cardId:card.id,dueDate,minimum:Number(card.minimum)||0,needsReview:migrating,imported:true})
     }
-    for (const payment of data.payments.filter(p=>p.cardId===card.id&&!p.statementId)) {
-      const statements=data.cardStatements.filter(s=>s.cardId===card.id).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))
-      const match=statements.find(s=>s.dueDate===payment.cycleDueDateBefore)||statements.find(s=>s.dueDate>=transactionDay(payment))||statements.at(-1)
-      if(match) payment.statementId=match.id
+  }
+  // Older releases did not distinguish inferred assignments from user choices.
+  // Preserve the old link for review, but never infer which minimum a payment satisfies.
+  for (const payment of data.payments) {
+    if (!['confirmed','unassigned'].includes(payment.assignmentStatus)) {
+      if (payment.statementId) payment.previousStatementId=payment.statementId
+      payment.statementId=''
+      payment.assignmentStatus='unassigned'
     }
   }
   for (const bill of data.bills) {
@@ -63,7 +67,7 @@ export function prepareData(source, now = new Date()) {
 }
 
 export function statementTotals(statement, payments, now=new Date()) {
-  const actualPaid=sum(payments.filter(p=>p.statementId===statement.id&&posted(p,now)))
+  const actualPaid=sum(payments.filter(p=>p.assignmentStatus==='confirmed'&&p.statementId===statement.id&&p.cardId===statement.cardId&&posted(p,now)))
   return {required:statement.minimum,actualPaid,paid:Math.min(statement.minimum,actualPaid),remaining:dollars(Math.max(0,cents(statement.minimum)-cents(actualPaid)))}
 }
 export function cycleTotals(cycle, payments, now=new Date()) {
@@ -98,9 +102,9 @@ function changeBalance(data,id,delta) {
 }
 export function recordCardPayment(source, form, now=new Date()) {
   const data=prepareData(source,now),card=data.accounts.find(a=>a.id===form.cardId&&a.type==='credit'),bank=data.accounts.find(a=>a.id===form.bankId&&a.type!=='credit'),statement=data.cardStatements.find(s=>s.id===form.statementId&&s.cardId===form.cardId)
-  if(!card||!bank||!statement) throw new Error('Choose a cash account, card, and statement. Add a statement under Debts if none is available.')
+  if(!card||!bank||(form.statementId&&!statement)) throw new Error('Choose a cash account and card, and a statement belonging to that card or Unassigned.')
   const value=amount(form.amount),historical=Boolean(form.historical)
-  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement.id,cycleDueDateBefore:statement.dueDate,cycleAdvanced:false}
+  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement?.id||'',assignmentStatus:statement?'confirmed':'unassigned',cycleDueDateBefore:statement?.dueDate,cycleAdvanced:false}
   if(!historical){changeBalance(data,bank.id,-cents(value));changeBalance(data,card.id,-cents(value))}
   data.payments.unshift(p)
   return data
@@ -145,17 +149,31 @@ export function confirmBillCycle(source,id,value,now=new Date(),dueDate) {
 export function removeStatement(source,id,now=new Date()) {
   const data=prepareData(source,now),statement=data.cardStatements.find(s=>s.id===id)
   if(!statement)throw new Error('Statement not found.')
-  if(data.payments.some(p=>p.statementId===id))throw new Error('Reassign or remove this statement’s payments before removing it.')
+  if(data.payments.some(p=>p.statementId===id))throw new Error('Reassign this statement’s payments or leave them unassigned before removing it.')
   data.cardStatements=data.cardStatements.filter(s=>s.id!==id).map(s=>s.supersededBy===id?{...s,supersededBy:undefined}:s)
   const latest=data.cardStatements.filter(s=>s.cardId===statement.cardId).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
   data.accounts=data.accounts.map(a=>a.id===statement.cardId?{...a,nextDueDate:latest?.dueDate||'',dueDay:0,minimum:latest?.minimum||0}:a)
   return data
 }
 export function reassignPayment(source,id,targetId,kind,now=new Date()) {
-  const data=prepareData(source,now),card=kind==='card',p=(card?data.payments:data.billPayments).find(p=>p.id===id),target=(card?data.cardStatements:data.billCycles).find(x=>x.id===targetId)
-  if(!p||!target||(card?p.cardId!==target.cardId:p.billId!==target.billId)) throw new Error('Choose an occurrence belonging to the same account or bill.')
-  p[card?'statementId':'cycleId']=targetId
-  if(card)p.cycleDueDateBefore=target.dueDate
+  if(kind==='card')return assignCardPayments(source,[id],targetId,now)
+  const data=prepareData(source,now),p=data.billPayments.find(p=>p.id===id),target=data.billCycles.find(x=>x.id===targetId)
+  if(kind!=='bill'||!p||!target||p.billId!==target.billId) throw new Error('Choose an occurrence belonging to the same bill.')
+  p.cycleId=targetId
+  return data
+}
+export function assignCardPayments(source,ids,targetId,now=new Date()) {
+  const data=prepareData(source,now)
+  if(!Array.isArray(ids)||!ids.length||new Set(ids).size!==ids.length)throw new Error('Select one or more payments.')
+  const payments=ids.map(id=>data.payments.find(p=>p.id===id))
+  if(payments.some(p=>!p)||new Set(payments.map(p=>p.cardId)).size!==1)throw new Error('Select payments belonging to one card.')
+  const target=data.cardStatements.find(s=>s.id===targetId&&s.cardId===payments[0].cardId)
+  if(targetId&&!target)throw new Error('Choose a statement belonging to the selected card.')
+  for(const payment of payments){
+    payment.statementId=target?.id||''
+    payment.assignmentStatus=target?'confirmed':'unassigned'
+    // Keep original dates/amounts and legacy cycle metadata intact for auditability.
+  }
   return data
 }
 export function reconcileAccount(source,form,now=new Date()) {
