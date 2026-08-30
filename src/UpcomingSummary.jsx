@@ -12,7 +12,7 @@ export default function UpcomingSummary({data,onStatements,now=new Date()}) {
         {item.statementNeeded?<small>Add the next statement when your issuer provides it. No new minimum has been assumed.</small>:<small>{money.format(item.required)} {card?'minimum':'bill'} · {money.format(item.actualPaid??item.paid)} {card?'paid':item.fundingType==='credit'?'charged':'paid'} · {item.overdue?'Overdue since':'Due'} {item.dueDate.toLocaleDateString()}{!card?` · ${item.accountName}`:''}</small>}
         {card&&item.additionalUnpaidCount>0&&<p className="summary-warning">{item.additionalUnpaidCount} other unpaid statement{item.additionalUnpaidCount===1?'':'s'}{item.additionalOverdueCount?` (${item.additionalOverdueCount} overdue)`:''}. Review whether the latest minimum includes past-due amounts; amounts are not combined in this row.</p>}
         {card&&item.reviewCount>0&&<p className="summary-warning">{item.reviewCount} imported statement{item.reviewCount===1?' needs':'s need'} review against your issuer’s records.</p>}
-        {card&&item.unassignedPaymentCount>0&&<p className="summary-warning">{item.unassignedPaymentCount} payment{item.unassignedPaymentCount===1?' is':'s are'} unassigned and excluded from minimums. The remaining amount may be overstated until you review assignments.</p>}
+        {card&&item.reviewPaymentCount>0&&<p className="summary-warning">{item.reviewPaymentCount} recent payment{item.reviewPaymentCount===1?' may':'s may'} affect this minimum. Review payment assignments.</p>}
         {card&&<button type="button" className="mini" onClick={onStatements}>View statements</button>}
       </div>
     }):<div className="empty">Add recurring bills or card statements to see upcoming obligations.</div>}

@@ -1,4 +1,4 @@
-import { localDate, trackedObligations } from './finance.js'
+import { localDate, trackedObligations, transactionDay } from './finance.js'
 
 // A presentation-only selection. Never merge, delete, or reassign statements.
 // Keep the full obligation list for cash calculations and statement history.
@@ -15,7 +15,7 @@ export function upcomingSummary(data, now=new Date()) {
       additionalUnpaidCount:additionalUnpaid.length,
       additionalOverdueCount:additionalUnpaid.filter(o=>o.dateKey<today).length,
       reviewCount:data.cardStatements.filter(s=>s.cardId===card.id&&!s.supersededBy&&s.needsReview).length,
-      unassignedPaymentCount:data.payments.filter(p=>p.cardId===card.id&&p.assignmentStatus!=='confirmed').length,
+      reviewPaymentCount:data.payments.filter(p=>p.cardId===card.id&&p.assignmentStatus==='unassigned'&&items.some(s=>s.dateKey>=transactionDay(p)&&s.dateKey>=today)).length,
     }
   })
   return [...obligations.filter(o=>o.kind==='bill'),...cards].sort((a,b)=>(a.dateKey||'9999-12-31').localeCompare(b.dateKey||'9999-12-31')||a.name.localeCompare(b.name))

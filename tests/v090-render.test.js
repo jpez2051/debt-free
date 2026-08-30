@@ -12,7 +12,7 @@ test('all main pages render migrated financial data through the final build pipe
   let page='dashboard'
   const server=await createServer({server:{middlewareMode:true},appType:'custom',plugins:[{name:'test-initial-page',enforce:'pre',transform(code,id){if(id.endsWith('/src/App.jsx'))return code.replace("useState('dashboard')",`useState('${page}')`)}}]})
   try{
-    for(const [route,text] of [['dashboard','Cash after tracked obligations'],['accounts','Reconcile balance'],['transactions','Log refund'],['bills','Bill occurrences'],['debts','Statements'],['payoff','no new charges or fees'],['spending','Net spending trend'],['insights','Credit score history']]){
+    for(const [route,text] of [['dashboard','Cash after tracked obligations'],['accounts','Reconcile balance'],['transactions','Log refund'],['bills','Bill occurrences'],['debts','Statements'],['payoff','no new charges or fees'],['spending','Net spending by category'],['insights','Credit score history']]){
       page=route;server.moduleGraph.invalidateAll()
       const {default:App}=await server.ssrLoadModule('/src/App.jsx')
       const html=renderToStaticMarkup(React.createElement(App))

@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.4 — Actionable payment review and richer visuals
+
+- Treat unassigned payments marked Already included as historical/general records: keep them in history without changing current balances, counting toward a statement, or creating permanent dashboard warnings.
+- Keep recent current-balance payments actionable until assigned or deliberately classified as general; add bulk Historical/general classification under Debts.
+- Preserve the browser's pre-v0.9.4 records as a recovery snapshot before the first successful save.
+- Break six-month net-spending bars into the largest spending categories, group smaller categories as Other, and preserve refund-adjusted monthly totals.
+- Replace account rows with responsive account tiles using private, built-in account-type icons and deterministic accents rather than external image searches.
+
 ## v0.9.3 — Filterable account activity
 
 - Add account, date range, activity type, and merchant/description search filters with a matching entry count and Reset filters.

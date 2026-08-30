@@ -142,8 +142,8 @@ test('save, reload, export and restore retain all financial records',()=>{
   let data=billPay(pay(billData(),70),100);data=reconcileAccount(data,{accountId:'bank',balance:1700,reason:'Checked'},now)
   const storage=memoryStorage(),repo=createRepository(storage,'test');repo.load(raw());repo.save(data)
   const restored=parseBackup(JSON.stringify({schema:'debt-free-backup-v1',data}))
-  assert.deepEqual(restored,data)
-  assert.deepEqual(createRepository(storage,'test').load(raw()),data)
+  assert.deepEqual(restored,prepareData(data))
+  assert.deepEqual(createRepository(storage,'test').load(raw()),prepareData(data))
 })
 test('storage failures never replace the last saved data',()=>{
   const storage=memoryStorage();storage.setItem('test',JSON.stringify(base()));const repo=createRepository(storage,'test');repo.load(raw());const before=storage.getItem('test')

@@ -34,11 +34,12 @@ export function prepareData(source, now = new Date()) {
   // Older releases did not distinguish inferred assignments from user choices.
   // Preserve the old link for review, but never infer which minimum a payment satisfies.
   for (const payment of data.payments) {
-    if (!['confirmed','unassigned'].includes(payment.assignmentStatus)) {
+    if (!['confirmed','unassigned','general'].includes(payment.assignmentStatus)) {
       if (payment.statementId) payment.previousStatementId=payment.statementId
       payment.statementId=''
-      payment.assignmentStatus='unassigned'
+      payment.assignmentStatus=payment.historical?'general':'unassigned'
     }
+    if(payment.historical&&payment.assignmentStatus==='unassigned'&&!payment.statementId)payment.assignmentStatus='general'
   }
   for (const bill of data.bills) {
     if(!data.billCycles.some(c=>c.billId===bill.id)) {
@@ -102,9 +103,9 @@ function changeBalance(data,id,delta) {
 }
 export function recordCardPayment(source, form, now=new Date()) {
   const data=prepareData(source,now),card=data.accounts.find(a=>a.id===form.cardId&&a.type==='credit'),bank=data.accounts.find(a=>a.id===form.bankId&&a.type!=='credit'),statement=data.cardStatements.find(s=>s.id===form.statementId&&s.cardId===form.cardId)
-  if(!card||!bank||(form.statementId&&!statement)) throw new Error('Choose a cash account and card, and a statement belonging to that card or Unassigned.')
+  if(!card||!bank||(form.statementId&&!statement)) throw new Error('Choose a cash account and card, and a statement belonging to that card or leave it for review.')
   const value=amount(form.amount),historical=Boolean(form.historical)
-  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement?.id||'',assignmentStatus:statement?'confirmed':'unassigned',cycleDueDateBefore:statement?.dueDate,cycleAdvanced:false}
+  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement?.id||'',assignmentStatus:statement?'confirmed':historical?'general':'unassigned',cycleDueDateBefore:statement?.dueDate,cycleAdvanced:false}
   if(!historical){changeBalance(data,bank.id,-cents(value));changeBalance(data,card.id,-cents(value))}
   data.payments.unshift(p)
   return data
@@ -167,11 +168,11 @@ export function assignCardPayments(source,ids,targetId,now=new Date()) {
   if(!Array.isArray(ids)||!ids.length||new Set(ids).size!==ids.length)throw new Error('Select one or more payments.')
   const payments=ids.map(id=>data.payments.find(p=>p.id===id))
   if(payments.some(p=>!p)||new Set(payments.map(p=>p.cardId)).size!==1)throw new Error('Select payments belonging to one card.')
-  const target=data.cardStatements.find(s=>s.id===targetId&&s.cardId===payments[0].cardId)
-  if(targetId&&!target)throw new Error('Choose a statement belonging to the selected card.')
+  const general=targetId==='__general__',target=data.cardStatements.find(s=>s.id===targetId&&s.cardId===payments[0].cardId)
+  if(targetId&&!general&&!target)throw new Error('Choose a statement belonging to the selected card.')
   for(const payment of payments){
     payment.statementId=target?.id||''
-    payment.assignmentStatus=target?'confirmed':'unassigned'
+    payment.assignmentStatus=target?'confirmed':general||payment.historical?'general':'unassigned'
     // Keep original dates/amounts and legacy cycle metadata intact for auditability.
   }
   return data

@@ -19,7 +19,7 @@ test('legacy guessed and missing assignments remain in history without satisfyin
   const raw=fixture(),before=structuredClone(raw),data=prepareData(raw,now)
   assert.deepEqual(raw,before);assert.deepEqual(immutableDetails(data),immutableDetails(raw))
   assert.equal(data.payments[0].previousStatementId,'sep')
-  assert.ok(data.payments.every(p=>p.assignmentStatus==='unassigned'&&p.statementId===''))
+  assert.deepEqual(data.payments.map(p=>p.assignmentStatus),['general','unassigned']);assert.ok(data.payments.every(p=>p.statementId===''))
   assert.deepEqual(totals(data),[0,0]);assert.equal(data.payments.reduce((n,p)=>n+p.amount,0),325)
   assert.deepEqual(prepareData(data,now),data)
   assert.equal(statementTotals(raw.cardStatements[1],raw.payments,now).remaining,50)
@@ -27,7 +27,7 @@ test('legacy guessed and missing assignments remain in history without satisfyin
 test('pre-statement versions do not guess from payment dates or cycle dates',()=>{
   const raw=fixture();delete raw.financeVersion;delete raw.cardStatements;delete raw.payments[0].statementId
   const data=prepareData(raw,now)
-  assert.ok(data.payments.every(p=>p.assignmentStatus==='unassigned'))
+  assert.deepEqual(data.payments.map(p=>p.assignmentStatus),['general','unassigned'])
   assert.ok(totals(data).every(n=>n===0))
 })
 test('confirming a statement does not silently confirm payments',()=>{
@@ -87,13 +87,13 @@ test('first corrected save preserves original browser data and subsequent loads 
   assert.equal(items.get('test-before-v092'),original)
   repo.save(reassignPayment(next,'one','','card',now))
   assert.equal(items.get('test-before-v092'),original)
-  assert.equal(createRepository(storage,'test').load({}).payments[0].assignmentStatus,'unassigned')
+  assert.equal(createRepository(storage,'test').load({}).payments[0].assignmentStatus,'general')
 })
 test('September cannot be marked met by unverified older payments',()=>{
   const raw=fixture();raw.cardStatements=raw.cardStatements.filter(s=>s.id==='sep')
   const row=upcomingSummary(prepareData(raw,now),now)[0]
   assert.equal(row.statementId,'sep');assert.equal(row.remaining,50);assert.equal(row.actualPaid,0)
-  assert.equal(row.unassignedPaymentCount,2)
+  assert.equal(row.reviewPaymentCount,1)
 })
 test('actual payment form defaults to unassigned and never chooses a statement from date',async()=>{
   const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx')
@@ -102,16 +102,16 @@ test('actual payment form defaults to unassigned and never chooses a statement f
   assert.equal(form.statementId,'')
   assert.match(output,/cardId:e.target.value,statementId:''/)
   assert.match(output,/<Field label="Statement"><select value=/)
-  assert.match(output,/Unassigned — does not count toward a minimum/)
+  assert.match(output,/Needs review — assign later/)
 })
 test('bulk review renders dates, amount, previous unverified assignment and accessible controls',async()=>{
   const server=await createServer({server:{middlewareMode:true},appType:'custom'})
   try{
     const {default:Review}=await server.ssrLoadModule('/src/PaymentAssignments.jsx')
     const html=renderToStaticMarkup(React.createElement(Review,{data:prepareData(fixture(),now),update(){throw new Error('Rendering must not save')}}))
-    for(const text of ['2026-08-05','$300.00','Statement not assigned','Previous unverified assignment: due 2026-09-15','Select all shown','Show only unassigned payments','Save as unassigned','type="checkbox"'])assert.ok(html.includes(text),text)
+    for(const text of ['2026-08-08','$25.00','Needs review','Select all shown','Show only payments needing review','Historical/general — no statement needed','Keep for review','type="checkbox"'])assert.ok(html.includes(text),text)
     const {default:Summary}=await server.ssrLoadModule('/src/UpcomingSummary.jsx')
     const dashboard=renderToStaticMarkup(React.createElement(Summary,{data:prepareData(fixture(),now),now,onStatements(){}}))
-    assert.ok(dashboard.includes('payments are unassigned and excluded from minimums'))
+    assert.ok(dashboard.includes('recent payment may affect this minimum'))
   }finally{await server.close()}
 })
