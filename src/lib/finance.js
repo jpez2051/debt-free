@@ -67,6 +67,26 @@ export function prepareData(source, now = new Date()) {
   return data
 }
 
+export function hasDuplicateLedgerTransaction(source,form,kind){
+  const merchant=String(form.merchant||({income:'Income',transfer:'External transfer',purchase:'Expense',refund:'Refund'}[kind]||'')).trim().toLocaleLowerCase()
+  return (source.transactions||[]).some(item=>item.id!==form.id&&item.kind===kind&&item.accountId===form.accountId&&transactionDay(item)===(form.date||'')&&cents(item.amount)===cents(form.amount)&&String(item.merchant||'').trim().toLocaleLowerCase()===merchant)
+}
+
+export function saveRecurringBill(source,form,now=new Date()){
+  if(!form.name?.trim()||cents(form.amount)<=0)throw new Error('Enter a bill name and an amount greater than zero.')
+  const data=prepareData(source,now),old=form.id?data.bills.find(b=>b.id===form.id):null,today=localDate(now),requestedDate=form.nextDueDate||today
+  if(!calendarDate(requestedDate))throw new Error('Choose a valid next due date.')
+  const item={...old,id:old?.id||crypto.randomUUID(),name:form.name.trim(),amount:dollars(cents(form.amount)),dueDay:new Date(`${requestedDate}T12:00:00`).getDate(),nextDueDate:requestedDate,frequency:form.frequency==='annual'?'annual':'monthly',autopay:Boolean(form.autopay),category:form.category||'Other',accountId:form.accountId||'',active:form.active!==false}
+  for(let count=0;item.nextDueDate<today&&count<1200;count++)item.nextDueDate=nextBillDate(item.nextDueDate,item)
+  data.bills=old?data.bills.map(b=>b.id===old.id?item:b):[...data.bills,item]
+  if(old){
+    const paidCycles=new Set(data.billPayments.filter(p=>p.billId===old.id&&p.cycleId).map(p=>p.cycleId))
+    data.billCycles=data.billCycles.filter(c=>c.billId!==old.id||c.dueDate<today||c.actualAmount!=null||paidCycles.has(c.id))
+    if(!data.billCycles.some(c=>c.billId===old.id&&c.dueDate===item.nextDueDate))data.billCycles.push({id:`cycle-${old.id}-${item.nextDueDate}`,billId:old.id,dueDate:item.nextDueDate,expectedAmount:item.amount,actualAmount:null,needsReview:false})
+  }
+  return prepareData(data,now)
+}
+
 export function statementTotals(statement, payments, now=new Date()) {
   const actualPaid=sum(payments.filter(p=>p.assignmentStatus==='confirmed'&&p.statementId===statement.id&&p.cardId===statement.cardId&&posted(p,now)))
   return {required:statement.minimum,actualPaid,paid:Math.min(statement.minimum,actualPaid),remaining:dollars(Math.max(0,cents(statement.minimum)-cents(actualPaid)))}

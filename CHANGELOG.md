@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.6 — Data-health and correction tools
+
+- Add credit-score editing that preserves record identity and recalculates trends, duplicate-date warnings, and a neutral Aura bureau default.
+- Synchronize edited recurring bills into future unconfirmed/unpaid occurrences while preserving confirmed, paid, and historical occurrences.
+- Warn before saving an exact duplicate activity entry and surface existing duplicate candidates without changing records automatically.
+- Add Data Health checks for duplicate activity/scores, bill schedule mismatches, missing current statements, stale balance reconciliation, unusual score changes, and historical coverage.
+- Use cash-after-tracked-obligations wording consistently so the dashboard does not imply that unlogged living expenses are protected.
+
 ## v0.9.5 — Safer diagnostic sharing
 
 - Add an anonymized diagnostic export for calculation and data-quality reviews without exposing account, merchant, bill, or income-source names.

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { upcomingSummary } from '../src/lib/upcomingSummary.js'
-import { cashAfterObligations, prepareData, confirmBillCycle, recordBillPayment } from '../src/lib/finance.js'
+import { cashAfterObligations, prepareData, confirmBillCycle, recordBillPayment, saveRecurringBill } from '../src/lib/finance.js'
 import { readFile } from 'node:fs/promises'
 import config from '../vite.config.js'
 
@@ -48,11 +48,11 @@ test('subscription price change via the actual edit handler preserves older paym
   data.billPayments=[{id:'oldcharge',billId:'music',cycleId:'july',bankId:'card',amount:17.99,date:'2026-07-28T12:00:00Z',localDate:'2026-07-28'}]
   const historical=structuredClone({cycle:data.billCycles[0],payment:data.billPayments[0]}),original=structuredClone(data)
   const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx'),line=output.split('\n').find(l=>l.startsWith(' const saveBill='))
-  const handler=Function('data','form','dateValue','update','setModal','setForm',`${line};return saveBill`)(data,{...data.bills[0],amount:'20.99'},()=> '2026-08-27',next=>{data=prepareData(next,now);return true},()=>{},()=>{})
+  const handler=Function('data','form','action','finish','saveRecurringBill',`${line};return saveBill`)(data,{...data.bills[0],amount:'20.99'},fn=>fn(),next=>{data=next;return true},(source,form)=>saveRecurringBill(source,form,now))
   handler({preventDefault(){}})
-  assert.equal(data.bills[0].amount,20.99);assert.equal(data.billCycles.find(c=>c.id==='august').expectedAmount,17.99)
-  data=confirmBillCycle(data,'august',20.99,now)
-  data=recordBillPayment(data,{cycleId:'august',bankId:'card',date:'2026-08-27',amount:20.99},now)
+  assert.equal(data.bills[0].amount,20.99);const august=data.billCycles.find(c=>c.dueDate==='2026-08-28');assert.equal(august.expectedAmount,20.99)
+  data=confirmBillCycle(data,august.id,20.99,now)
+  data=recordBillPayment(data,{cycleId:august.id,bankId:'card',date:'2026-08-27',amount:20.99},now)
   assert.equal(data.accounts[0].balance,1020.99)
   assert.deepEqual(data.billCycles.find(c=>c.id==='july'),historical.cycle)
   assert.deepEqual(data.billPayments.find(p=>p.id==='oldcharge'),historical.payment)

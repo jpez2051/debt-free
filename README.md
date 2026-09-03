@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.9.5**
+**Current build: v0.9.6**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.9.5 can do
+## What v0.9.6 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.
@@ -24,6 +24,8 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Open native calendar pickers from every transaction, payment, and credit-card date field.
 - Record card interest as an expense that increases the selected card balance.
 - Track credit-score history by source, bureau, scoring model, and date.
+- Edit credit-score history, warn about same-series/date duplicates, and avoid assuming Aura's bureau.
+- Review possible duplicates, schedule mismatches, statement gaps, stale reconciliations, unusual score changes, and historical coverage in Data Health.
 - Track recurring-bill payments, partial payments, and remaining obligations.
 - Show month-over-month and six-month spending trends.
 - Guide initial setup and chart comparable credit-score trends.

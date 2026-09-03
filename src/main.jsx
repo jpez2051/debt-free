@@ -23,6 +23,7 @@ import './v0517.css'
 import './v060.css'
 import './v070.css'
 import './v080.css'
+import './v096.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
