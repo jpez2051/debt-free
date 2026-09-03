@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.5 — Safer diagnostic sharing
+
+- Add an anonymized diagnostic export for calculation and data-quality reviews without exposing account, merchant, bill, or income-source names.
+- Preserve IDs, repeated-merchant patterns, amounts, dates, categories, statement assignments, and credit-score metadata needed to audit the app accurately.
+- Mark diagnostic files as non-restorable and warn that their remaining financial values are still sensitive.
+
 ## v0.9.4 — Actionable payment review and richer visuals
 
 - Treat unassigned payments marked Already included as historical/general records: keep them in history without changing current balances, counting toward a statement, or creating permanent dashboard warnings.
