@@ -56,6 +56,19 @@ export function prepareData(source, now = new Date()) {
       payment.cycleId=cycle.id
     }
     if(bill.active===false) continue
+    const today=localDate(now),billCycles=data.billCycles.filter(c=>c.billId===bill.id),paidCycleIds=new Set(data.billPayments.filter(p=>p.billId===bill.id&&p.cycleId).map(p=>p.cycleId))
+    const protectedFuture=billCycles.filter(c=>c.dueDate>=today&&(c.actualAmount!=null||c.needsReview||paidCycleIds.has(c.id)))
+    const editableFuture=billCycles.filter(c=>c.dueDate>=today&&c.actualAmount==null&&!c.needsReview&&!paidCycleIds.has(c.id))
+    if(!protectedFuture.length&&editableFuture.length){
+      let expectedDate=calendarDate(bill.nextDueDate)?bill.nextDueDate:dueInMonth(now.getFullYear(),now.getMonth(),bill.dueDay)
+      for(let count=0;expectedDate<today&&count<1200;count++)expectedDate=nextBillDate(expectedDate,bill)
+      const synchronized=editableFuture.length===1&&editableFuture[0].dueDate===expectedDate&&cents(editableFuture[0].expectedAmount)===cents(bill.amount)
+      if(!synchronized){
+        const editableIds=new Set(editableFuture.map(c=>c.id));data.billCycles=data.billCycles.filter(c=>!editableIds.has(c.id))
+        data.billCycles.push({id:`cycle-${bill.id}-${expectedDate}`,billId:bill.id,dueDate:expectedDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false})
+      }
+      bill.nextDueDate=expectedDate
+    }
     let latest=data.billCycles.filter(c=>c.billId===bill.id).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
     for(let count=0;latest.dueDate<localDate(now)&&count<1200;count++) {
       const dueDate=nextBillDate(latest.dueDate,bill)

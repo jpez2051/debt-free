@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.7 — Clear and synchronized bill estimates
+
+- Automatically synchronize unconfirmed, unpaid future bill occurrences with the recurring bill's current amount and schedule.
+- Preserve every completed, paid, confirmed, imported-for-review, and historical occurrence rather than rewriting financial history.
+- Label outstanding bill amounts as Due and distinguish a bill's ongoing estimate from a deliberately different confirmed occurrence.
+
 ## v0.9.6 — Data-health and correction tools
 
 - Add credit-score editing that preserves record identity and recalculates trends, duplicate-date warnings, and a neutral Aura bureau default.
