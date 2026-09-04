@@ -1,3 +1,5 @@
+import { categorizeSpendingEntry, TRANSFER_PURPOSES } from './categories.js'
+
 // Money is calculated in integer cents; dates identifying obligations are local calendar dates.
 export const cents = value => Math.round(Number(value || 0) * 100)
 export const dollars = value => value / 100
@@ -82,15 +84,16 @@ export function prepareData(source, now = new Date()) {
 }
 
 export function hasDuplicateLedgerTransaction(source,form,kind){
-  const merchant=String(form.merchant||({income:'Income',transfer:'External transfer',purchase:'Expense',refund:'Refund'}[kind]||'')).trim().toLocaleLowerCase()
-  return (source.transactions||[]).some(item=>item.id!==form.id&&item.kind===kind&&item.accountId===form.accountId&&transactionDay(item)===(form.date||'')&&cents(item.amount)===cents(form.amount)&&String(item.merchant||'').trim().toLocaleLowerCase()===merchant)
+  const destination=kind==='transfer'&&form.toAccountId?(source.accounts||[]).find(a=>a.id===form.toAccountId):null
+  const merchant=String(destination?.name||form.merchant||({income:'Income',transfer:'External transfer',purchase:'Expense',refund:'Refund'}[kind]||'')).trim().toLocaleLowerCase()
+  return (source.transactions||[]).some(item=>item.id!==form.id&&item.kind===kind&&item.accountId===form.accountId&&transactionDay(item)===(form.date||'')&&cents(item.amount)===cents(form.amount)&&String(item.merchant||'').trim().toLocaleLowerCase()===merchant&&(kind!=='transfer'||(item.toAccountId||'')===(form.toAccountId||'')))
 }
 
 export function saveRecurringBill(source,form,now=new Date()){
   if(!form.name?.trim()||cents(form.amount)<=0)throw new Error('Enter a bill name and an amount greater than zero.')
   const data=prepareData(source,now),old=form.id?data.bills.find(b=>b.id===form.id):null,today=localDate(now),requestedDate=form.nextDueDate||today
   if(!calendarDate(requestedDate))throw new Error('Choose a valid next due date.')
-  const item={...old,id:old?.id||crypto.randomUUID(),name:form.name.trim(),amount:dollars(cents(form.amount)),dueDay:new Date(`${requestedDate}T12:00:00`).getDate(),nextDueDate:requestedDate,frequency:form.frequency==='annual'?'annual':'monthly',autopay:Boolean(form.autopay),category:form.category||'Other',accountId:form.accountId||'',active:form.active!==false}
+  const item={...old,id:old?.id||crypto.randomUUID(),name:form.name.trim(),amount:dollars(cents(form.amount)),dueDay:new Date(`${requestedDate}T12:00:00`).getDate(),nextDueDate:requestedDate,frequency:form.frequency==='annual'?'annual':'monthly',autopay:Boolean(form.autopay),category:form.category||'Other',subcategory:form.subcategory||'',accountId:form.accountId||'',active:form.active!==false}
   for(let count=0;item.nextDueDate<today&&count<1200;count++)item.nextDueDate=nextBillDate(item.nextDueDate,item)
   data.bills=old?data.bills.map(b=>b.id===old.id?item:b):[...data.bills,item]
   if(old){
@@ -156,7 +159,7 @@ export function recordBillPayment(source,form,now=new Date()) {
   if(!cycle||!bill||!funding) throw new Error('Choose a bill occurrence and payment account.')
   const value=amount(form.amount),historical=Boolean(form.historical)
   if(form.confirmActual) cycle.actualAmount=amount(form.actualAmount,true)
-  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,category:bill.category||'Other',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
+  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
   if(!historical) changeBalance(data,funding.id,(funding.type==='credit'?1:-1)*cents(value))
   data.billPayments.unshift(p)
   return data
@@ -223,7 +226,7 @@ export function reconcileAccount(source,form,now=new Date()) {
 export function recordRefund(source,form,now=new Date()) {
   const data=prepareData(source,now),a=data.accounts.find(a=>a.id===form.accountId),value=amount(form.amount)
   if(!a||!form.merchant?.trim()) throw new Error('Choose an account and enter the merchant.')
-  data.transactions.unshift({id:crypto.randomUUID(),...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',amount:value,historical:Boolean(form.historical)})
+  data.transactions.unshift({id:crypto.randomUUID(),...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',subcategory:form.subcategory||'',amount:value,historical:Boolean(form.historical)})
   if(!form.historical) changeBalance(data,a.id,(a.type==='credit'?-1:1)*cents(value))
   return data
 }
@@ -232,20 +235,30 @@ function transactionEffect(entry, account) {
   const sign=entry.kind==='refund'?(account.type==='credit'?-1:1):entry.kind==='income'?1:entry.kind==='transfer'?-1:account.type==='credit'?1:-1
   return sign*cents(entry.amount)
 }
+function applyTransactionBalances(data,entry,direction=1){
+  const account=data.accounts.find(a=>a.id===entry.accountId)
+  if(account)changeBalance(data,account.id,direction*transactionEffect(entry,account))
+  if(entry.kind==='transfer'&&entry.toAccountId){const destination=data.accounts.find(a=>a.id===entry.toAccountId);if(destination)changeBalance(data,destination.id,direction*cents(entry.amount))}
+}
 export function saveLedgerTransaction(source,form,kind,now=new Date()) {
-  const data=prepareData(source,now),account=data.accounts.find(a=>a.id===form.accountId),value=amount(form.amount),old=data.transactions.find(t=>t.id===form.id)
+  const data=prepareData(source,now),account=data.accounts.find(a=>a.id===form.accountId),destination=kind==='transfer'&&form.toAccountId?data.accounts.find(a=>a.id===form.toAccountId):null,value=amount(form.amount),old=data.transactions.find(t=>t.id===form.id)
   if(!account)throw new Error('Choose an account.')
   if(['income','transfer'].includes(kind)&&account.type==='credit')throw new Error('Choose a cash account for income or external transfers.')
-  if(old&&!old.historical){const previous=data.accounts.find(a=>a.id===old.accountId);changeBalance(data,previous.id,-transactionEffect(old,previous))}
-  const item={id:old?.id||crypto.randomUUID(),...dateFields(form.date,now),kind,accountId:account.id,merchant:(form.merchant||({income:'Income',transfer:'External transfer',purchase:'Expense',refund:'Refund'}[kind])).trim(),amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',historical:Boolean(form.historical)}
-  if(!item.historical)changeBalance(data,account.id,transactionEffect(item,account))
+  if(kind==='transfer'&&form.toAccountId&&!destination)throw new Error('Choose a valid tracked destination account or an outside destination.')
+  if(destination&&(destination.type==='credit'||destination.id===account.id))throw new Error('Choose a different cash account as the transfer destination.')
+  if(kind==='transfer'&&!destination&&!form.merchant?.trim())throw new Error('Enter the outside destination, such as Acorns.')
+  if(kind==='transfer'&&!TRANSFER_PURPOSES.includes(form.transferPurpose))throw new Error('Choose what this transfer is for.')
+  if(old&&!old.historical)applyTransactionBalances(data,old,-1)
+  const merchant=kind==='transfer'?(destination?.name||form.merchant).trim():(form.merchant||({income:'Income',purchase:'Expense',refund:'Refund'}[kind])).trim()
+  const item={id:old?.id||crypto.randomUUID(),...dateFields(form.date,now),kind,accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{})}
+  if(!item.historical)applyTransactionBalances(data,item)
   data.transactions=old?data.transactions.map(t=>t.id===old.id?item:t):[item,...data.transactions]
   return data
 }
 export function removeLedgerTransaction(source,id,now=new Date()) {
   const data=prepareData(source,now),old=data.transactions.find(t=>t.id===id)
   if(!old)throw new Error('Entry not found.')
-  if(!old.historical){const account=data.accounts.find(a=>a.id===old.accountId);changeBalance(data,account.id,-transactionEffect(old,account))}
+  if(!old.historical)applyTransactionBalances(data,old,-1)
   data.transactions=data.transactions.filter(t=>t.id!==id)
   return data
 }
@@ -258,5 +271,5 @@ export function removeRecurringPayment(source,id,now=new Date()) {
 }
 
 export function netSpendingEntries(data) {
-  return [...data.transactions.filter(t=>t.kind==='purchase'||t.kind==='refund').map(t=>({...t,amount:t.kind==='refund'?-Number(t.amount):Number(t.amount)})),...data.billPayments.map(p=>({...p,merchant:p.billName,category:p.category||'Other',accountId:p.bankId,kind:'purchase'}))]
+  return [...data.transactions.filter(t=>t.kind==='purchase'||t.kind==='refund').map(t=>categorizeSpendingEntry({...t,amount:t.kind==='refund'?-Number(t.amount):Number(t.amount)})),...data.billPayments.map(p=>categorizeSpendingEntry({...p,merchant:p.billName,category:p.category||'Other',subcategory:p.subcategory||'',accountId:p.bankId,kind:'purchase'}))]
 }

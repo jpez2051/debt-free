@@ -2,6 +2,15 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.9 — Detailed spending and accurate transfers
+
+- Add main categories with practical subcategories such as Groceries, Restaurants & Takeout, Fast Food, Coffee & Snacks, Fuel, and Streaming.
+- Preserve existing category data while translating legacy categories into the new reporting groups; records gain the new fields only when edited or re-saved.
+- Learn the most frequently used category for each merchant and apply it as an editable suggestion.
+- Support transfers between tracked cash accounts, updating both balances without counting the movement as spending.
+- Classify outside destinations such as Acorns as savings, investment, account, or other transfers and report saved/invested contributions separately.
+- Add Subcategory as a Spending breakdown and keep category detail visible by merchant and account.
+
 ## v0.9.8 — Actionable Data Health
 
 - Allow duplicate activity and score findings to be confirmed as intentional so they no longer remain unresolved warnings.

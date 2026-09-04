@@ -14,10 +14,10 @@ export function validateData(data) {
   const date=x=>typeof x==='string'&&!Number.isNaN(new Date(x).getTime())
   const account=id=>data.accounts.find(a=>a.id===id),bill=id=>data.bills.find(b=>b.id===id)
   if(data.accounts.some(a=>!a.name||!number(a.balance)||(a.type!==undefined&&!['checking','savings','credit'].includes(a.type))||(a.accent!==undefined&&!/^#[0-9a-f]{6}$/i.test(a.accent))||['minimum','apr','limit'].some(k=>a[k]!==undefined&&!amount(a[k]))))return false
-  if(data.transactions.some(t=>!account(t.accountId)||!amount(t.amount)||!date(t.date)||(t.kind!==undefined&&!['income','purchase','transfer','refund'].includes(t.kind))))return false
+  if(data.transactions.some(t=>!account(t.accountId)||!amount(t.amount)||!date(t.date)||(t.kind!==undefined&&!['income','purchase','transfer','refund'].includes(t.kind))||(t.subcategory!==undefined&&typeof t.subcategory!=='string')||(t.toAccountId!==undefined&&t.toAccountId!==''&&(!account(t.toAccountId)||t.kind!=='transfer'||account(t.toAccountId).type==='credit'||t.toAccountId===t.accountId))||(t.transferPurpose!==undefined&&!['Savings contribution','Investment contribution','Account transfer','Other transfer'].includes(t.transferPurpose))))return false
   if(data.payments.some(p=>!account(p.bankId)||!account(p.cardId)||!amount(p.amount)||!date(p.date)||(account(p.bankId)?.type==='credit')||(account(p.cardId)?.type&&account(p.cardId).type!=='credit')))return false
-  if(data.bills.some(b=>!b.name||!amount(b.amount)||(b.accountId&&!account(b.accountId))||(b.frequency&&!['monthly','annual'].includes(b.frequency))))return false
-  if((data.billPayments||[]).some(p=>!account(p.bankId)||!bill(p.billId)||!amount(p.amount)||!date(p.date)))return false
+  if(data.bills.some(b=>!b.name||!amount(b.amount)||(b.accountId&&!account(b.accountId))||(b.frequency&&!['monthly','annual'].includes(b.frequency))||(b.subcategory!==undefined&&typeof b.subcategory!=='string')))return false
+  if((data.billPayments||[]).some(p=>!account(p.bankId)||!bill(p.billId)||!amount(p.amount)||!date(p.date)||(p.subcategory!==undefined&&typeof p.subcategory!=='string')))return false
   if((data.creditScores||[]).some(s=>!amount(s.score)||Number(s.score)<250||Number(s.score)>900||!date(s.date)))return false
   if((data.cardStatements||[]).some(s=>!account(s.cardId)||account(s.cardId).type!=='credit'||!calendarDate(s.dueDate)||!amount(s.minimum)))return false
   if((data.cardStatements||[]).some(s=>s.supersededBy&&!(data.cardStatements||[]).some(t=>t.id===s.supersededBy&&t.cardId===s.cardId&&t.dueDate>s.dueDate)))return false
