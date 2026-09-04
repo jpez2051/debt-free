@@ -9,7 +9,7 @@ export function analyzeDataHealth(data,now=new Date()){
     const key=[item.kind,item.accountId,transactionDay(item),cents(item.amount),String(item.merchant||'').trim().toLocaleLowerCase()].join('|')
     duplicates.set(key,[...(duplicates.get(key)||[]),item])
   }
-  for(const matches of duplicates.values())if(matches.length>1)issues.push({kind:'duplicate',level:'warning',title:'Possible duplicate activity',detail:`${matches.length} matching entries for ${matches[0].merchant||'an activity item'} on ${transactionDay(matches[0])} at ${money.format(matches[0].amount)}. Review before removing anything.`})
+  for(const matches of duplicates.values())if(matches.length>1)issues.push({id:`duplicate-activity:${matches.map(x=>x.id).sort().join(':')}`,kind:'duplicate',level:'warning',acknowledgeable:true,acknowledgementLabel:'Keep both — this is correct',title:'Possible duplicate activity',detail:`${matches.length} matching entries for ${matches[0].merchant||'an activity item'} on ${transactionDay(matches[0])} at ${money.format(matches[0].amount)}. Review before removing anything.`})
 
   for(const card of (data.accounts||[]).filter(a=>a.type==='credit'))if(!(data.cardStatements||[]).some(s=>s.cardId===card.id&&!s.supersededBy&&!s.needsReview&&s.dueDate>=today))issues.push({kind:'statement',level:'warning',title:`${card.name} needs a current statement`,detail:'Add or confirm the next due date and minimum so upcoming obligations are complete.'})
 
@@ -27,13 +27,13 @@ export function analyzeDataHealth(data,now=new Date()){
   const scoreGroups=new Map(),scoreDuplicates=new Map()
   for(const score of data.creditScores||[]){
     const series=[score.source,score.bureau,score.model].join('|'),exact=[series,score.date,score.score].join('|')
-    scoreGroups.set(series,[...(scoreGroups.get(series)||[]),score]);scoreDuplicates.set(exact,(scoreDuplicates.get(exact)||0)+1)
+    scoreGroups.set(series,[...(scoreGroups.get(series)||[]),score]);scoreDuplicates.set(exact,[...(scoreDuplicates.get(exact)||[]),score])
   }
-  if([...scoreDuplicates.values()].some(count=>count>1))issues.push({kind:'score',level:'warning',title:'Possible duplicate credit score',detail:'The same score, date, source, bureau and model appears more than once.'})
+  for(const matches of scoreDuplicates.values())if(matches.length>1)issues.push({id:`duplicate-score:${matches.map(x=>x.id).sort().join(':')}`,kind:'score',level:'warning',acknowledgeable:true,acknowledgementLabel:'Keep all — these are correct',title:'Possible duplicate credit score',detail:'The same score, date, source, bureau and model appears more than once.'})
   for(const [series,values] of scoreGroups){
     const ordered=values.slice().sort((a,b)=>a.date.localeCompare(b.date))
     const jumps=ordered.slice(1).filter((score,index)=>dayDistance(score.date,ordered[index].date)<=45&&Math.abs(score.score-ordered[index].score)>=40)
-    if(jumps.length)issues.push({kind:'score',level:'info',title:'Credit-score changes need context',detail:`${series.replaceAll('|',' · ')} has ${jumps.length} change${jumps.length===1?'':'s'} of 40+ points within 45 days. Verify that every entry belongs to the same score series.`})
+    if(jumps.length)issues.push({id:`score-change:${ordered.map(x=>x.id).sort().join(':')}`,kind:'score',level:'info',acknowledgeable:true,acknowledgementLabel:'Mark series as reviewed',title:'Credit-score changes need context',detail:`${series.replaceAll('|',' · ')} has ${jumps.length} change${jumps.length===1?'':'s'} of 40+ points within 45 days. Verify that every entry belongs to the same score series.`})
   }
 
   const dated=[...(data.transactions||[]),...(data.payments||[]),...(data.billPayments||[])].map(transactionDay).filter(Boolean).sort()

@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.9.8 — Actionable Data Health
+
+- Allow duplicate activity and score findings to be confirmed as intentional so they no longer remain unresolved warnings.
+- Preserve reviewed-finding decisions with the rest of the user's local data, backups, restores, and anonymized diagnostic exports.
+- Keep confirmed findings available under Reviewed findings with a Review this again action.
+- Add a View Data Health button at the top of Insights that scrolls directly to the section on desktop and mobile.
+
 ## v0.9.7 — Clear and synchronized bill estimates
 
 - Automatically synchronize unconfirmed, unpaid future bill occurrences with the recurring bill's current amount and schedule.

@@ -22,6 +22,7 @@ const posted = (p, now) => transactionDay(p) <= localDate(now)
 export function prepareData(source, now = new Date()) {
   const data = structuredClone(source)
   for (const key of ['accounts','transactions','payments','bills','billPayments','creditScores','cardStatements','billCycles','adjustments']) data[key] ||= []
+  data.dataHealthAcknowledgements ||= []
   const migrating = data.financeVersion !== 1
   for (const card of data.accounts.filter(a=>a.type==='credit')) {
     if (!data.cardStatements.some(s=>s.cardId===card.id)) {

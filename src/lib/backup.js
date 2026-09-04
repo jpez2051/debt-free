@@ -27,5 +27,6 @@ export function validateData(data) {
   if((data.billPayments||[]).some(p=>p.cycleId&&!(data.billCycles||[]).some(c=>c.id===p.cycleId&&c.billId===p.billId)))return false
   if((data.adjustments||[]).some(a=>!account(a.accountId)||!number(a.before)||!number(a.after)||!number(a.delta)||!date(a.date)||!a.reason))return false
   if(data.extra!==undefined&&!amount(data.extra))return false
+  if(data.dataHealthAcknowledgements!==undefined&&(!Array.isArray(data.dataHealthAcknowledgements)||data.dataHealthAcknowledgements.some(x=>typeof x!=='string'||!x)||new Set(data.dataHealthAcknowledgements).size!==data.dataHealthAcknowledgements.length))return false
   return true
 }
