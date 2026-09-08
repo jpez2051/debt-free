@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.10.0 — Payday cash-flow forecast
+
+- Add reusable weekly, every-two-weeks, twice-monthly, and monthly expected-income schedules.
+- Keep expected deposits separate from real balances while comparing current cash with obligations due before payday.
+- Add a transparent 30-day projection limited to scheduled income and tracked obligations, with an explicit warning about unentered day-to-day spending.
+- Allow a real income entry to replace its matching forecast occurrence so expected and received income are never counted twice.
+- Keep forecast dates on the device's local calendar and make schedule management responsive on phones.
+
 ## v0.9.9 — Detailed spending and accurate transfers
 
 - Add main categories with practical subcategories such as Groceries, Restaurants & Takeout, Fast Food, Coffee & Snacks, Fuel, and Streaming.

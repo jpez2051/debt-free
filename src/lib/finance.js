@@ -23,7 +23,7 @@ const posted = (p, now) => transactionDay(p) <= localDate(now)
 
 export function prepareData(source, now = new Date()) {
   const data = structuredClone(source)
-  for (const key of ['accounts','transactions','payments','bills','billPayments','creditScores','cardStatements','billCycles','adjustments']) data[key] ||= []
+  for (const key of ['accounts','transactions','payments','bills','billPayments','creditScores','cardStatements','billCycles','adjustments','incomeSchedules']) data[key] ||= []
   data.dataHealthAcknowledgements ||= []
   const migrating = data.financeVersion !== 1
   for (const card of data.accounts.filter(a=>a.type==='credit')) {
@@ -248,9 +248,11 @@ export function saveLedgerTransaction(source,form,kind,now=new Date()) {
   if(destination&&(destination.type==='credit'||destination.id===account.id))throw new Error('Choose a different cash account as the transfer destination.')
   if(kind==='transfer'&&!destination&&!form.merchant?.trim())throw new Error('Enter the outside destination, such as Acorns.')
   if(kind==='transfer'&&!TRANSFER_PURPOSES.includes(form.transferPurpose))throw new Error('Choose what this transfer is for.')
+  const incomeSchedule=kind==='income'&&form.incomeScheduleId?data.incomeSchedules.find(item=>item.id===form.incomeScheduleId):null
+  if(kind==='income'&&form.incomeScheduleId&&(!incomeSchedule||!calendarDate(form.scheduledIncomeDate)))throw new Error('Choose a valid expected deposit to match this income.')
   if(old&&!old.historical)applyTransactionBalances(data,old,-1)
   const merchant=kind==='transfer'?(destination?.name||form.merchant).trim():(form.merchant||({income:'Income',purchase:'Expense',refund:'Refund'}[kind])).trim()
-  const item={id:old?.id||crypto.randomUUID(),...dateFields(form.date,now),kind,accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{})}
+  const item={id:old?.id||crypto.randomUUID(),...dateFields(form.date,now),kind,accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{}),...(incomeSchedule?{incomeScheduleId:incomeSchedule.id,scheduledIncomeDate:form.scheduledIncomeDate}:{})}
   if(!item.historical)applyTransactionBalances(data,item)
   data.transactions=old?data.transactions.map(t=>t.id===old.id?item:t):[item,...data.transactions]
   return data

@@ -3,7 +3,7 @@ import { calendarDate } from './finance.js'
 export function validateData(data) {
   if(!data||typeof data!=='object'||!['accounts','transactions','payments','bills'].every(k=>Array.isArray(data[k])))return false
   if(data.financeVersion!==undefined&&data.financeVersion!==1)return false
-  const keys=['accounts','transactions','payments','bills','billPayments','creditScores','cardStatements','billCycles','adjustments']
+  const keys=['accounts','transactions','payments','bills','billPayments','creditScores','cardStatements','billCycles','adjustments','incomeSchedules']
   for(const key of keys){
     if(data[key]!==undefined&&!Array.isArray(data[key]))return false
     const ids=new Set()
@@ -12,9 +12,10 @@ export function validateData(data) {
   const number=x=>typeof x!=='boolean'&&x!==null&&x!==''&&Number.isFinite(Number(x))
   const amount=x=>number(x)&&Number(x)>=0
   const date=x=>typeof x==='string'&&!Number.isNaN(new Date(x).getTime())
-  const account=id=>data.accounts.find(a=>a.id===id),bill=id=>data.bills.find(b=>b.id===id)
+  const account=id=>data.accounts.find(a=>a.id===id),bill=id=>data.bills.find(b=>b.id===id),incomeSchedule=id=>(data.incomeSchedules||[]).find(item=>item.id===id)
   if(data.accounts.some(a=>!a.name||!number(a.balance)||(a.type!==undefined&&!['checking','savings','credit'].includes(a.type))||(a.accent!==undefined&&!/^#[0-9a-f]{6}$/i.test(a.accent))||['minimum','apr','limit'].some(k=>a[k]!==undefined&&!amount(a[k]))))return false
   if(data.transactions.some(t=>!account(t.accountId)||!amount(t.amount)||!date(t.date)||(t.kind!==undefined&&!['income','purchase','transfer','refund'].includes(t.kind))||(t.subcategory!==undefined&&typeof t.subcategory!=='string')||(t.toAccountId!==undefined&&t.toAccountId!==''&&(!account(t.toAccountId)||t.kind!=='transfer'||account(t.toAccountId).type==='credit'||t.toAccountId===t.accountId))||(t.transferPurpose!==undefined&&!['Savings contribution','Investment contribution','Account transfer','Other transfer'].includes(t.transferPurpose))))return false
+  if(data.transactions.some(t=>t.incomeScheduleId&&(!incomeSchedule(t.incomeScheduleId)||t.kind!=='income'||!calendarDate(t.scheduledIncomeDate))))return false
   if(data.payments.some(p=>!account(p.bankId)||!account(p.cardId)||!amount(p.amount)||!date(p.date)||(account(p.bankId)?.type==='credit')||(account(p.cardId)?.type&&account(p.cardId).type!=='credit')))return false
   if(data.bills.some(b=>!b.name||!amount(b.amount)||(b.accountId&&!account(b.accountId))||(b.frequency&&!['monthly','annual'].includes(b.frequency))||(b.subcategory!==undefined&&typeof b.subcategory!=='string')))return false
   if((data.billPayments||[]).some(p=>!account(p.bankId)||!bill(p.billId)||!amount(p.amount)||!date(p.date)||(p.subcategory!==undefined&&typeof p.subcategory!=='string')))return false
@@ -26,6 +27,7 @@ export function validateData(data) {
   if(data.payments.some(p=>p.assignmentStatus!==undefined&&(!['confirmed','unassigned','general'].includes(p.assignmentStatus)||(p.assignmentStatus==='confirmed'&&!p.statementId)||(p.assignmentStatus!=='confirmed'&&Boolean(p.statementId)))))return false
   if((data.billPayments||[]).some(p=>p.cycleId&&!(data.billCycles||[]).some(c=>c.id===p.cycleId&&c.billId===p.billId)))return false
   if((data.adjustments||[]).some(a=>!account(a.accountId)||!number(a.before)||!number(a.after)||!number(a.delta)||!date(a.date)||!a.reason))return false
+  if((data.incomeSchedules||[]).some(item=>!item.name||!account(item.accountId)||account(item.accountId).type==='credit'||!amount(item.amount)||Number(item.amount)<=0||!calendarDate(item.nextDate)||!['weekly','biweekly','semimonthly','monthly'].includes(item.frequency)||(item.frequency==='semimonthly'&&(!Number.isInteger(Number(item.secondPayDay))||Number(item.secondPayDay)<1||Number(item.secondPayDay)>31))))return false
   if(data.extra!==undefined&&!amount(data.extra))return false
   if(data.dataHealthAcknowledgements!==undefined&&(!Array.isArray(data.dataHealthAcknowledgements)||data.dataHealthAcknowledgements.some(x=>typeof x!=='string'||!x)||new Set(data.dataHealthAcknowledgements).size!==data.dataHealthAcknowledgements.length))return false
   return true
