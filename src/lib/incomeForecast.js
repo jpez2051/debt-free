@@ -49,8 +49,15 @@ export function expectedIncomeOccurrences(data,now=new Date(),days=30){
   return (data.incomeSchedules||[]).flatMap(schedule=>scheduleOccurrences(schedule,{from:now,days})).filter(item=>!recorded.has(`${item.scheduleId}|${item.date}`)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
 }
 
+export function readyIncomeOccurrences(data,now=new Date()){
+  const today=localDate(now),lookback=addDays(today,-40)
+  const recorded=new Set((data.transactions||[]).filter(t=>t.kind==='income'&&t.incomeScheduleId&&calendarDate(t.scheduledIncomeDate)).map(t=>`${t.incomeScheduleId}|${t.scheduledIncomeDate}`))
+  return (data.incomeSchedules||[]).map(schedule=>scheduleOccurrences(schedule,{from:atNoon(lookback),days:40}).filter(item=>item.date<=today).at(-1)).filter(item=>item&&!recorded.has(`${item.scheduleId}|${item.date}`)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
+}
+
 export function nextOccurrenceForSchedule(schedule,transactions=[],now=new Date()){
-  return expectedIncomeOccurrences({incomeSchedules:[schedule],transactions},now,400)[0]||null
+  const data={incomeSchedules:[schedule],transactions}
+  return readyIncomeOccurrences(data,now)[0]||expectedIncomeOccurrences(data,now,400)[0]||null
 }
 
 export function saveIncomeSchedule(source,form){

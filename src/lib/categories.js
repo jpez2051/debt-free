@@ -3,7 +3,7 @@ export const CATEGORY_GROUPS=[
   {name:'Transportation',subcategories:['Fuel','Parking & Tolls','Repairs & Maintenance','Transit & Rideshare','Other Transportation']},
   {name:'Shopping & Personal',subcategories:['General Shopping','Household','Clothing','Personal Care','Gifts','Other Shopping & Personal']},
   {name:'Bills & Utilities',subcategories:['Utilities','Phone & Internet','Home Services','Taxes','Other Bills & Utilities']},
-  {name:'Subscriptions',subcategories:['Streaming','Software & Apps','Memberships','Other Subscription']},
+  {name:'Subscriptions',subcategories:['Streaming','Software & Apps','Cloud Storage','Memberships','News & Digital Media','Other Subscription']},
   {name:'Entertainment',subcategories:['Events & Activities','Games','Hobbies','Other Entertainment']},
   {name:'Housing',subcategories:['Rent or Mortgage','Maintenance & Repairs','Furnishings','Other Housing']},
   {name:'Health',subcategories:['Medical','Pharmacy','Dental & Vision','Fitness','Other Health']},
@@ -39,13 +39,13 @@ const group=name=>CATEGORY_GROUPS.find(item=>item.name===name)
 export const categorySubcategories=name=>group(name)?.subcategories||CATEGORY_GROUPS.at(-1).subcategories
 
 export function categorySelection(entry={}){
-  const raw=String(entry.category||'').trim(),mapped=legacy[raw]
-  if(mapped)return {...mapped}
-  const found=group(raw)
+  const raw=String(entry.category||'').trim(),found=group(raw)
   if(found){
     const detail=String(entry.subcategory||'').trim()
     return {category:found.name,subcategory:found.subcategories.includes(detail)?detail:found.subcategories.at(-1)}
   }
+  const mapped=legacy[raw]
+  if(mapped)return {...mapped}
   return {category:'Other',subcategory:raw&&raw!=='Other'?raw:'Other'}
 }
 

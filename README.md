@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.10.0**
+**Current build: v0.10.1**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.10.0 can do
+## What v0.10.1 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.
@@ -38,6 +38,8 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Forecast payday timing without adding expected income to current account balances.
 - Compare obligations due before the next deposit with current cash and project a limited 30-day cash position.
 - Match a real income entry to its expected deposit so the forecast never counts both.
+- Flag a scheduled paycheck as ready to confirm and allow its actual amount and date to be corrected before posting.
+- Keep selected subscription subcategories intact, including Cloud Storage and News & Digital Media.
 - Support monthly and annual schedules, expected versus actual amounts, autopay status, and archiving.
 - Assign payments to explicit card statements without automatically advancing due dates.
 - Preserve overdue bill occurrences and confirm each invoice's actual amount and due date.

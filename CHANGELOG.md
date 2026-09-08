@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.10.1 — Confirm scheduled paychecks
+
+- Mark the latest due scheduled deposit as Ready to confirm and keep it actionable after payday until it is handled.
+- Open the real-income form with the expected source, amount, account, and schedule occurrence already linked.
+- Allow the actual amount and deposit date to be corrected before saving; checking changes only after confirmation.
+- Prefer an overdue unconfirmed occurrence when a schedule is selected manually, preventing a late entry from being attached to the next payday.
+- Fix current main categories such as Subscriptions retaining their selected subcategory, and add Cloud Storage plus News & Digital Media options.
+
 ## v0.10.0 — Payday cash-flow forecast
 
 - Add reusable weekly, every-two-weeks, twice-monthly, and monthly expected-income schedules.

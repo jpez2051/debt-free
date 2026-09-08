@@ -30,19 +30,19 @@ test('payday forecast explains a temporary shortage without changing actual cash
   assert.equal(data.accounts[0].balance,1200)
 })
 
-test('logging a linked paycheck replaces its forecast occurrence instead of double counting it',()=>{
-  const original=fixture(),posted=saveLedgerTransaction(original,{accountId:'bank',merchant:'Employer',amount:1000,date:'2026-09-10',historical:false,incomeScheduleId:'pay',scheduledIncomeDate:'2026-09-10'},'income',new Date(2026,8,10,12)),forecast=cashFlowForecast(posted,new Date(2026,8,10,12))
-  assert.equal(posted.accounts[0].balance,2200)
+test('logging a linked paycheck accepts its actual amount and replaces the forecast occurrence',()=>{
+  const original=fixture(),posted=saveLedgerTransaction(original,{accountId:'bank',merchant:'Employer',amount:975,date:'2026-09-10',historical:false,incomeScheduleId:'pay',scheduledIncomeDate:'2026-09-10'},'income',new Date(2026,8,10,12)),forecast=cashFlowForecast(posted,new Date(2026,8,10,12))
+  assert.equal(posted.accounts[0].balance,2175)
   assert.equal(forecast.expectedIncome,2000)
-  assert.equal(forecast.projectedCash,2900)
+  assert.equal(forecast.projectedCash,2875)
   assert.equal(validateData(posted),true)
   assert.deepEqual(prepareData(posted,new Date(2026,8,10,12)),posted)
 })
 
-test('v0.10.0 renders a responsive forecast and income-schedule matching',async()=>{
+test('v0.10.1 renders a responsive forecast and income-schedule matching',async()=>{
   const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=config.plugins[0].transform(source,'/src/App.jsx')
-  assert.match(output,/const VERSION='0\.10\.0'/)
-  assert.match(output,/<IncomeForecast data=\{data\} update=\{update\}/)
+  assert.match(output,/const VERSION='0\.10\.1'/)
+  assert.match(output,/<IncomeForecast data=\{data\} update=\{update\} onConfirmIncome=\{confirmExpectedIncome\}/)
   assert.match(output,/Expected income schedule/)
   assert.match(output,/nextOccurrenceForSchedule/)
   const server=await createServer({server:{middlewareMode:true},appType:'custom'})

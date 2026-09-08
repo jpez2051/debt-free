@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import config from '../vite.config.js'
-import { categorySelection, isSavedOrInvestedTransfer, merchantProfiles } from '../src/lib/categories.js'
+import { categorySelection, categorySubcategories, isSavedOrInvestedTransfer, merchantProfiles } from '../src/lib/categories.js'
 import { netSpendingEntries, prepareData, removeLedgerTransaction, saveLedgerTransaction } from '../src/lib/finance.js'
 import { activityEntries, filterActivity } from '../src/lib/activity.js'
 import { validateData } from '../src/lib/backup.js'
@@ -17,6 +17,14 @@ test('legacy categories gain useful reporting detail without rewriting saved rec
   assert.deepEqual(categorySelection(original),{category:'Food & Drink',subcategory:'Restaurants & Takeout'})
   assert.equal(data.transactions[0].category,'Dining')
   assert.deepEqual(netSpendingEntries(data)[0],{...original,category:'Food & Drink',subcategory:'Restaurants & Takeout'})
+})
+
+test('current main categories retain the chosen subcategory instead of falling back to legacy defaults',()=>{
+  assert.deepEqual(categorySelection({category:'Subscriptions',subcategory:'Streaming'}),{category:'Subscriptions',subcategory:'Streaming'})
+  assert.deepEqual(categorySelection({category:'Subscriptions',subcategory:'Cloud Storage'}),{category:'Subscriptions',subcategory:'Cloud Storage'})
+  assert.deepEqual(categorySelection({category:'Entertainment',subcategory:'Games'}),{category:'Entertainment',subcategory:'Games'})
+  assert.deepEqual(categorySelection({category:'Health',subcategory:'Fitness'}),{category:'Health',subcategory:'Fitness'})
+  assert.ok(categorySubcategories('Subscriptions').includes('News & Digital Media'))
 })
 
 test('merchant profiles learn the most-used category and use recency to break ties',()=>{
@@ -64,5 +72,5 @@ test('v0.9.9 release exposes detailed categories, smart merchants, and transfer 
   const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx'),categorySource=await readFile(new URL('../src/lib/categories.js',import.meta.url),'utf8')
   for(const text of ['Main category','Subcategory','Saved & invested','Outside tracked accounts (for example Acorns)','merchantProfiles','toAccountId'])assert.ok(output.includes(text),text)
   assert.match(categorySource,/Fast Food/);assert.match(categorySource,/Investment contribution/)
-  assert.match(output,/const VERSION='0\.10\.0'/)
+  assert.match(output,/const VERSION='0\.10\.1'/)
 })
