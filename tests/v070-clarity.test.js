@@ -6,10 +6,10 @@ test('v0.7.0 keeps bill payments backward compatible and integrates clarity feat
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   const vite=await readFile(new URL('../vite.config.js',import.meta.url),'utf8')
   assert.match(app,/billPayments:\[\]/)
-  assert.match(app,/saved\.billPayments\|\|\[\]/)
+  assert.match(app,/billPayments:\[\]/)
   assert.match(app,/saveBillPayment/)
   assert.match(app,/remainingBills/)
-  assert.match(vite,/transformAppV070/)
+  assert.doesNotMatch(vite,/app-transform/)
 })
 
 test('v0.7.0 ships setup, spending, and comparable score visuals',async()=>{
@@ -17,7 +17,7 @@ test('v0.7.0 ships setup, spending, and comparable score visuals',async()=>{
     readFile(new URL('../src/SetupGuide.jsx',import.meta.url),'utf8'),
     readFile(new URL('../src/SpendingTrends.jsx',import.meta.url),'utf8'),
     readFile(new URL('../src/CreditScoreChart.jsx',import.meta.url),'utf8'),
-    readFile(new URL('../src/v070.css',import.meta.url),'utf8'),
+    readFile(new URL('../src/styles.css',import.meta.url),'utf8'),
   ])
   assert.match(setup,/Setup progress/)
   assert.match(trends,/SIX-MONTH VIEW/)

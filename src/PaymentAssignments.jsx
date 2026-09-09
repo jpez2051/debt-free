@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import './v092.css'
 import { assignCardPayments, transactionDay, cents, dollars } from './lib/finance.js'
 
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})

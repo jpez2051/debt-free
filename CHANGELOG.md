@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.10.2 — Consolidated source and clearer mobile controls
+
+- Consolidated the shipped application source and styles so releases no longer depend on a chain of version-specific build-time rewrites.
+- Simplified phone entry with one Add button, compacted current credit-score summaries by comparable source, and collapsed dashboard methodology details while retaining important warnings.
+
 ## v0.10.1 — Confirm scheduled paychecks
 
 - Mark the latest due scheduled deposit as Ready to confirm and keep it actionable after payday until it is handled.

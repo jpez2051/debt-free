@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import config from '../vite.config.js'
 import { prepareData, recordCardPayment, removeCardPayment, statementTotals, recordBillPayment, cycleTotals, confirmBillCycle, trackedObligations, cashAfterObligations, saveStatement, reassignPayment, reconcileAccount, recordRefund, netSpendingEntries, saveLedgerTransaction, removeLedgerTransaction, removeRecurringPayment, nextBillDate, localDate } from '../src/lib/finance.js'
 import { createRepository, parseBackup } from '../src/lib/storage.js'
 import { validateData } from '../src/lib/backup.js'
@@ -170,7 +169,7 @@ test('previous saved snapshot and pre-upgrade data are retained',()=>{
   assert.deepEqual(JSON.parse(storage.getItem('test-previous')),loaded)
 })
 test('final application connects the real workflow functions and zero-extra default',async()=>{
-  const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx')
+  const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   assert.match(output,/recordCardPayment\(data,form\)/);assert.match(output,/recordBillPayment\(data,form\)/)
   assert.match(output,/strategy:'avalanche',extra:0/);assert.match(output,/persistState\(ready\);setData\(ready\)/)
   assert.match(output,/Cash after tracked obligations/);assert.match(output,/ReliabilityCenter data=/)
@@ -178,7 +177,7 @@ test('final application connects the real workflow functions and zero-extra defa
   assert.match(output,/statementId:''/)
 })
 test('the final form handler records two payments without advancing statements',async()=>{
-  const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx'),line=output.split('\n').find(l=>l.startsWith(' const addPayment='))
+  const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),line=output.split('\n').find(l=>l.startsWith(' const addPayment='))
   let data=base()
   for(const amount of [50,100]){
     const form={amount,cardId:'card',bankId:'bank',date:'2026-08-27',statementId:data.cardStatements[0].id},finish=next=>{data=next},handler=Function('data','form','recordCardPayment','transactionDay','action','confirm','finish',`${line};return addPayment`)(data,form,(d,f)=>recordCardPayment(d,f,now),p=>p.localDate,fn=>fn(),()=>true,finish)

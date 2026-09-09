@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import config from '../vite.config.js'
 import { categorySelection, categorySubcategories, isSavedOrInvestedTransfer, merchantProfiles } from '../src/lib/categories.js'
 import { netSpendingEntries, prepareData, removeLedgerTransaction, saveLedgerTransaction } from '../src/lib/finance.js'
 import { activityEntries, filterActivity } from '../src/lib/activity.js'
@@ -69,8 +68,8 @@ test('internal transfers appear under both accounts in Activity',()=>{
 })
 
 test('v0.9.9 release exposes detailed categories, smart merchants, and transfer destinations',async()=>{
-  const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx'),categorySource=await readFile(new URL('../src/lib/categories.js',import.meta.url),'utf8')
+  const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),categorySource=await readFile(new URL('../src/lib/categories.js',import.meta.url),'utf8')
   for(const text of ['Main category','Subcategory','Saved & invested','Outside tracked accounts (for example Acorns)','merchantProfiles','toAccountId'])assert.ok(output.includes(text),text)
   assert.match(categorySource,/Fast Food/);assert.match(categorySource,/Investment contribution/)
-  assert.match(output,/const VERSION='0\.10\.1'/)
+  assert.match(output,/const VERSION='0\.10\.2'/)
 })

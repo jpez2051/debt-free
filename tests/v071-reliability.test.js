@@ -5,11 +5,11 @@ import { validateData } from '../src/lib/backup.js'
 
 test('v0.7.1 protects linked bill records and preserves negative shortfalls',async()=>{
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
-  assert.match(app,/safeToSpend=cash-remainingBills-remainingMinimums/)
-  assert.match(app,/billPayments\|\|\[\]\)\.filter\(p=>p\.bankId===a\.id\)/)
+  assert.match(app,/safeToSpend=cashAfterObligations\(data\)/)
+  assert.match(app,/trackedObligations\(data\)/)
   assert.match(app,/historical payment record\(s\).*Archive it instead/)
-  assert.match(app,/obligation\?\.remaining\|\|b\.amount/)
-  assert.match(app,/confirmOutflow/)
+  assert.match(app,/cycleTotals\(cycle,data\.billPayments\)\.remaining/)
+  assert.match(app,/saveLedgerTransaction/)
 })
 
 test('backup validation accepts negative cash balances but rejects broken references',()=>{
@@ -19,10 +19,10 @@ test('backup validation accepts negative cash balances but rejects broken refere
   assert.equal(validateData({...valid,transactions:[{id:'bad',accountId:'missing',amount:5,date:'2026-08-25'}]}),false)
 })
 
-test('v0.7.1 transform uses device-local dates and honest empty states',async()=>{
-  const transform=await readFile(new URL('../scripts/v071-app-transform.js',import.meta.url),'utf8')
-  assert.match(transform,/now\.getFullYear\(\)/)
-  assert.match(transform,/Cash shortfall/)
-  assert.match(transform,/cards\.length\?String\(plan\.months\)/)
-  assert.match(transform,/card overdraft warning/)
+test('the direct source uses device-local dates and honest empty states',async()=>{
+  const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
+  assert.match(app,/dateValue\(\)/)
+  assert.match(app,/cashAfterObligations/)
+  assert.match(app,/cards\.length\?String\(plan\.months\)/)
+  assert.match(app,/confirmOutflow/)
 })

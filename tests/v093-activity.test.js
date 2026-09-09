@@ -2,7 +2,6 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { activityEntries, defaultActivityFilters, filterActivity, activityDateRange } from '../src/lib/activity.js'
-import config from '../vite.config.js'
 import { createServer } from 'vite'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -63,7 +62,7 @@ test('recorded local day is preferred over UTC day; resetting creates independen
   assert.equal(defaultActivityFilters().search,'');assert.equal(defaultActivityFilters().period,'all')
 })
 test('release pipeline preserves ledger edit/delete handlers and routes to existing management pages',async()=>{
-  const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx')
+  const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   const activity=output.split('\n').find(l=>l.includes("page==='transactions'&&<PageHead"))
   assert.match(activity,/<ActivityList data=\{data\}/)
   assert.match(activity,/renderTransaction=\{t=><ActionRow/)

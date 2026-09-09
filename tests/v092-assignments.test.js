@@ -5,7 +5,6 @@ import { prepareData, statementTotals, assignCardPayments, reassignPayment, reco
 import { createRepository, parseBackup } from '../src/lib/storage.js'
 import { validateData } from '../src/lib/backup.js'
 import { upcomingSummary } from '../src/lib/upcomingSummary.js'
-import config from '../vite.config.js'
 import { createServer } from 'vite'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -96,7 +95,7 @@ test('September cannot be marked met by unverified older payments',()=>{
   assert.equal(row.reviewPaymentCount,1)
 })
 test('actual payment form defaults to unassigned and never chooses a statement from date',async()=>{
-  const output=config.plugins[0].transform(await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),'/src/App.jsx')
+  const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   const open=output.split('\n').find(l=>l.startsWith(' const openPayment='))
   let form;Function('cards','checking','cashAccounts','setForm','setModal','dateValue',`${open};openPayment()`)([{id:'c'}],[{id:'b'}],[],f=>form=f,()=>{},()=> '2026-08-27')
   assert.equal(form.statementId,'')

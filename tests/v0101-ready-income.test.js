@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
-import config from '../vite.config.js'
 import { nextOccurrenceForSchedule, readyIncomeOccurrences } from '../src/lib/incomeForecast.js'
 
 const schedule={id:'pay',name:'Paycheck',amount:1000,accountId:'bank',frequency:'biweekly',nextDate:'2026-09-10',active:true}
@@ -21,9 +20,9 @@ test('manual schedule selection prefers an overdue unconfirmed paycheck',()=>{
   assert.equal(nextOccurrenceForSchedule(schedule,[],new Date(2026,8,11,12)).date,'2026-09-10')
 })
 
-test('ready-to-confirm UI and prefilled income handoff ship in v0.10.1',async()=>{
-  const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=config.plugins[0].transform(source,'/src/App.jsx')
-  assert.match(output,/const VERSION='0\.10\.1'/)
+test('ready-to-confirm UI and prefilled income handoff ship in v0.10.2',async()=>{
+  const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=source
+  assert.match(output,/const VERSION='0\.10\.2'/)
   assert.match(output,/const confirmExpectedIncome=/)
   assert.match(output,/amount:schedule\.amount/)
   assert.match(output,/scheduledIncomeDate:occurrence\.date/)

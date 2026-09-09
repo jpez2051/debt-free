@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import config from '../vite.config.js'
 import { cardMinimumObligation } from '../src/lib/obligations.js'
 
 const now=new Date(2026,7,27,12)
@@ -33,11 +32,11 @@ test('legacy payments without cycle metadata retain their actual amount',()=>{
 
 test('complete release pipeline renders minimum met with actual payment detail',async()=>{
   const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
-  const output=config.plugins[0].transform(source,'/src/App.jsx')
+  const output=source
   const summary=await readFile(new URL('../src/UpcomingSummary.jsx',import.meta.url),'utf8')
   assert.match(output,/<UpcomingSummary data=\{data\}/)
   assert.match(summary,/Minimum met ✓/)
   assert.match(summary,/money\.format\(item\.remaining\)\} due/)
   assert.match(summary,/item\.actualPaid/)
-  assert.match(output,/const VERSION='0\.10\.1'/)
+  assert.match(output,/const VERSION='0\.10\.2'/)
 })
