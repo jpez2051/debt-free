@@ -61,6 +61,12 @@ test('logging unassigned payments changes balances once; assigning does not chan
   const historical=recordCardPayment(data,{cardId:'c',bankId:'b',amount:20,date:'2026-08-20',historical:true},now)
   assert.deepEqual(historical.accounts,data.accounts);assert.deepEqual(totals(historical),[0,0])
 })
+test('logging an explicit extra payment changes balances but never satisfies a statement minimum',()=>{
+  const data=recordCardPayment(fixture(),{cardId:'c',bankId:'b',amount:30,date:'2026-08-26',statementId:'',paymentIntent:'extra'},now)
+  assert.deepEqual(data.accounts.map(a=>a.balance),[870,1970]);assert.equal(data.payments[0].assignmentStatus,'extra');assert.deepEqual(totals(data),[0,0])
+  const reassigned=assignCardPayments(data,[data.payments[0].id],'__extra__',now)
+  assert.deepEqual(reassigned.accounts,data.accounts);assert.equal(reassigned.payments[0].assignmentStatus,'extra');assert.equal(validateData(reassigned),true)
+})
 test('explicit new early payments combine against one statement only',()=>{
   let data=fixture()
   for(const [date,amount] of [['2026-08-20',30],['2026-08-25',25]])data=recordCardPayment(data,{cardId:'c',bankId:'b',amount,date,statementId:'sep'},now)
@@ -94,21 +100,23 @@ test('September cannot be marked met by unverified older payments',()=>{
   assert.equal(row.statementId,'sep');assert.equal(row.remaining,50);assert.equal(row.actualPaid,0)
   assert.equal(row.reviewPaymentCount,1)
 })
-test('actual payment form defaults to unassigned and never chooses a statement from date',async()=>{
+test('actual payment form defaults to review and never chooses a statement from date',async()=>{
   const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   const open=output.split('\n').find(l=>l.startsWith(' const openPayment='))
   let form;Function('cards','checking','cashAccounts','setForm','setModal','dateValue',`${open};openPayment()`)([{id:'c'}],[{id:'b'}],[],f=>form=f,()=>{},()=> '2026-08-27')
   assert.equal(form.statementId,'')
-  assert.match(output,/cardId:e.target.value,statementId:''/)
-  assert.match(output,/<Field label="Statement"><select value=/)
-  assert.match(output,/Needs review — assign later/)
+  assert.equal(form.paymentIntent,'review')
+  assert.match(output,/cardId:e.target.value,statementId:'',paymentIntent:'review'/)
+  assert.match(output,/<Field label="Apply payment"><select value=/)
+  assert.match(output,/Extra \/ general payment/)
+  assert.match(output,/Not sure — review later/)
 })
 test('bulk review renders dates, amount, previous unverified assignment and accessible controls',async()=>{
   const server=await createServer({server:{middlewareMode:true},appType:'custom'})
   try{
     const {default:Review}=await server.ssrLoadModule('/src/PaymentAssignments.jsx')
     const html=renderToStaticMarkup(React.createElement(Review,{data:prepareData(fixture(),now),update(){throw new Error('Rendering must not save')}}))
-    for(const text of ['2026-08-08','$25.00','Needs review','Select all shown','Show only payments needing review','Historical/general — no statement needed','Keep for review','type="checkbox"'])assert.ok(html.includes(text),text)
+    for(const text of ['2026-08-08','$25.00','Needs review','Select all shown','Show only payments needing review','Extra/general payment — no statement needed','Historical/general — no statement needed','Keep for review','type="checkbox"'])assert.ok(html.includes(text),text)
     const {default:Summary}=await server.ssrLoadModule('/src/UpcomingSummary.jsx')
     const dashboard=renderToStaticMarkup(React.createElement(Summary,{data:prepareData(fixture(),now),now,onStatements(){}}))
     assert.ok(dashboard.includes('recent payment may affect this minimum'))

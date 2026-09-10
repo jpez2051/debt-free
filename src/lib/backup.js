@@ -24,7 +24,7 @@ export function validateData(data) {
   if((data.cardStatements||[]).some(s=>s.supersededBy&&!(data.cardStatements||[]).some(t=>t.id===s.supersededBy&&t.cardId===s.cardId&&t.dueDate>s.dueDate)))return false
   if((data.billCycles||[]).some(c=>!bill(c.billId)||!calendarDate(c.dueDate)||!amount(c.expectedAmount)||(c.actualAmount!=null&&!amount(c.actualAmount))))return false
   if(data.payments.some(p=>p.statementId&&!(data.cardStatements||[]).some(s=>s.id===p.statementId&&s.cardId===p.cardId)))return false
-  if(data.payments.some(p=>p.assignmentStatus!==undefined&&(!['confirmed','unassigned','general'].includes(p.assignmentStatus)||(p.assignmentStatus==='confirmed'&&!p.statementId)||(p.assignmentStatus!=='confirmed'&&Boolean(p.statementId)))))return false
+  if(data.payments.some(p=>p.assignmentStatus!==undefined&&(!['confirmed','unassigned','general','extra'].includes(p.assignmentStatus)||(p.assignmentStatus==='confirmed'&&!p.statementId)||(p.assignmentStatus!=='confirmed'&&Boolean(p.statementId)))))return false
   if((data.billPayments||[]).some(p=>p.cycleId&&!(data.billCycles||[]).some(c=>c.id===p.cycleId&&c.billId===p.billId)))return false
   if((data.adjustments||[]).some(a=>!account(a.accountId)||!number(a.before)||!number(a.after)||!number(a.delta)||!date(a.date)||!a.reason))return false
   if((data.incomeSchedules||[]).some(item=>!item.name||!account(item.accountId)||account(item.accountId).type==='credit'||!amount(item.amount)||Number(item.amount)<=0||!calendarDate(item.nextDate)||!['weekly','biweekly','semimonthly','monthly'].includes(item.frequency)||(item.frequency==='semimonthly'&&(!Number.isInteger(Number(item.secondPayDay))||Number(item.secondPayDay)<1||Number(item.secondPayDay)>31))))return false

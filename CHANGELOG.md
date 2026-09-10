@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.10.4 — Explicit extra card payments
+
+- Added an explicit **Extra / general payment** choice when logging a card payment.
+- Extra/general payments reduce cash and card balances, but do not mark a statement minimum as met; **review later** remains the safe default.
+
 ## v0.10.3 — Sharper dashboard pulse
 
 - Made the dashboard’s Assistant pulse compact instead of matching the height of the neighboring obligations card.
