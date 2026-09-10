@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.10.5 — Cleaner controls and stronger light mode
+
+- Account tiles now reveal Edit and Remove only after you tap or click the tile.
+- Activity filters start collapsed and show an Active indicator when a filter is applied.
+- Renamed the passive sidebar label to **Built-in guidance** so it does not imply a chat feature.
+- Corrected remaining dark-only control, status, and form colors in light and system-light themes.
+
 ## v0.10.4 — Explicit extra card payments
 
 - Added an explicit **Extra / general payment** choice when logging a card payment.

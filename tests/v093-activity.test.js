@@ -70,13 +70,15 @@ test('release pipeline preserves ledger edit/delete handlers and routes to exist
   assert.match(activity,/onEdit=\{t.kind==='refund'\?undefined/)
   for(const target of ['debts','bills','accounts'])assert.ok(activity.includes(`setPage('${target}')`))
 })
-test('Activity renders named filter controls, matching count, payment navigation and empty state',async()=>{
+test('Activity keeps filters collapsed until needed while retaining matching count and navigation',async()=>{
   const server=await createServer({server:{middlewareMode:true},appType:'custom'})
   try{
     const {default:Activity}=await server.ssrLoadModule('/src/ActivityList.jsx')
     const props={data:fixture(),renderTransaction:t=>React.createElement('span',null,t.merchant),onStatements(){},onBills(){},onAccounts(){}}
     const html=renderToStaticMarkup(React.createElement(Activity,props))
-    for(const text of ['All accounts','All time','Last month','Custom dates','All activity types','Merchant or description','9 matching entries of 9','Reset filters','View in Debts','View in Bills','View in Accounts'])assert.ok(html.includes(text),text)
+    for(const text of ['Filters','All accounts','All time','Last month','Custom dates','All activity types','Merchant or description','9 matching entries of 9','View in Debts','View in Bills','View in Accounts'])assert.ok(html.includes(text),text)
+    assert.ok(html.includes('<details class="activity-filter-panel">'))
+    assert.ok(!html.includes('Reset filters'))
     const empty=renderToStaticMarkup(React.createElement(Activity,{...props,data:{accounts:[],transactions:[],payments:[],bills:[]}}))
     assert.ok(empty.includes('No activity recorded yet'))
   }finally{await server.close()}
