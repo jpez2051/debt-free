@@ -71,5 +71,5 @@ test('v0.9.9 release exposes detailed categories, smart merchants, and transfer 
   const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),categorySource=await readFile(new URL('../src/lib/categories.js',import.meta.url),'utf8')
   for(const text of ['Main category','Subcategory','Saved & invested','Outside tracked accounts (for example Acorns)','merchantProfiles','toAccountId'])assert.ok(output.includes(text),text)
   assert.match(categorySource,/Fast Food/);assert.match(categorySource,/Investment contribution/)
-  assert.match(output,/const VERSION='0\.10\.2'/)
+  assert.match(output,/const VERSION='0\.10\.3'/)
 })

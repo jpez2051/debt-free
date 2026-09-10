@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.10.3 — Sharper dashboard pulse
+
+- Made the dashboard’s Assistant pulse compact instead of matching the height of the neighboring obligations card.
+- Added clear labels and distinct visual treatments for cash position, card usage, and the leading spending category.
+
 ## v0.10.2 — Consolidated source and clearer mobile controls
 
 - Consolidated the shipped application source and styles so releases no longer depend on a chain of version-specific build-time rewrites.

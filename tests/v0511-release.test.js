@@ -8,8 +8,8 @@ test('the release is versioned consistently and uses direct application source',
   const release = await readFile(new URL('../src/release.js', import.meta.url), 'utf8')
   const vite = await readFile(new URL('../vite.config.js', import.meta.url), 'utf8')
 
-  assert.equal(packageJson.version, '0.10.2')
-  assert.equal(version, '0.10.2')
-  assert.match(release, /RELEASE_VERSION = '0\.10\.2'/)
+  assert.equal(packageJson.version, '0.10.3')
+  assert.equal(version, '0.10.3')
+  assert.match(release, /RELEASE_VERSION = '0\.10\.3'/)
   assert.doesNotMatch(vite, /app-transform/)
 })
