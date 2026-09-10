@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.10.6 — Clearer backup counts and bill occurrences
+
+- Fixed unreadable count numbers in the light-theme Data & backup section.
+- A paid recurring-bill occurrence now says **Paid for** its date rather than **Due**, making an accidental future-occurrence assignment obvious.
+
 ## v0.10.5 — Cleaner controls and stronger light mode
 
 - Account tiles now reveal Edit and Remove only after you tap or click the tile.

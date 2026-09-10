@@ -12,4 +12,5 @@ test('v0.5.17 themes use shared tokens and explicit icon colors',async()=>{
   assert.match(css,/@media\(prefers-color-scheme:light\)/)
   assert.match(css,/Light and system themes: replace legacy dark-only ink/)
   assert.match(css,/\.cycle-status\.paid\{color:#176246/)
+  assert.match(css,/\.data-counts b\{color:var\(--theme-text\)/)
 })
