@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.1 — Clear cloud onboarding for everyone
+
+- New people with no browser records can now create a blank private cloud workspace directly after sign-in.
+- Browsers with existing Debt Free records now clearly offer both paths: copy those records or start completely fresh.
+- Kept backup restoration available from Settings, so a backup can be brought in later without forcing an import during first sign-in.
+
 ## v0.11.0 — Private cloud sync
 
 - Added Google sign-in and a private Firebase cloud record for each signed-in person.
@@ -9,7 +15,7 @@ All notable Debt Free builds are tracked here.
 - Moved normal saves, backup restore, account status, and save feedback to the cloud-aware experience.
 - Added restrictive Firestore rules that allow each signed-in person to read and write only their own record.
 
-## v0.11.0 — Clearer backup counts and bill occurrences
+## v0.10.6 — Clearer backup counts and bill occurrences
 
 - Fixed unreadable count numbers in the light-theme Data & backup section.
 - A paid recurring-bill occurrence now says **Paid for** its date rather than **Due**, making an accidental future-occurrence assignment obvious.
