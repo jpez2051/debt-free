@@ -10,7 +10,8 @@ import ActivityList from './ActivityList.jsx'
 import UpcomingSummary from './UpcomingSummary.jsx'
 import ReliabilityCenter from './ReliabilityCenter.jsx'
 import { prepareData, trackedObligations, cashAfterObligations, recordCardPayment, removeCardPayment, recordBillPayment, cycleTotals, localDate, transactionDay, saveLedgerTransaction, removeLedgerTransaction, removeRecurringPayment, netSpendingEntries } from './lib/finance.js'
-import { loadState, persistState, storageError } from './lib/storage.js'
+import { setActiveData } from './lib/cloudState.js'
+import { loadState } from './lib/storage.js'
 import './currencyPrecision.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowDown, ArrowRightLeft, ArrowUp, Banknote, BarChart3, CalendarDays, Check, CreditCard, Gauge, Home, Lightbulb, Pencil, Plus, ReceiptText, ShoppingBag, Sparkles, Target, Trash2, TrendingUp, WalletCards, X } from 'lucide-react'
@@ -20,7 +21,7 @@ import { filterByReportingPeriod, REPORTING_PERIODS } from './lib/reporting.js'
 import SpendingTrends from './SpendingTrends.jsx'
 import SetupGuide from './SetupGuide.jsx'
 
-const VERSION='0.10.6'
+const VERSION='0.11.0'
 const STORAGE_KEY='debt-free-v040'
 const categories=CATEGORY_GROUPS.map(group=>group.name)
 const starter={
@@ -38,12 +39,11 @@ const cardDueDate=a=>a?.nextDueDate||legacyCardDate(a?.dueDay)
 const cardStatementDate=a=>a?.statementDate||legacyCardDate(a?.statementDay)
 const cycleStatus=a=>{const paid=Number(a?.cyclePaidAmount||0),minimum=Number(a?.minimum||0);if(paid>0&&minimum>0)return {label:'Partially paid',remaining:Math.max(0,minimum-paid)};if(a?.lastPaidDueDate)return {label:'Paid last cycle',remaining:minimum};return {label:'Due',remaining:minimum}}
 const confirmOutflow=(account,amount,label)=>Number(amount)<=Number(account?.balance)||confirm(`${label} is greater than the ${money2.format(account?.balance||0)} available in ${account?.name||'this account'}. Continue and allow a negative balance?`)
-function load(){return loadState(starter)}
 const nav=[['dashboard','Dashboard',Home],['accounts','Accounts',WalletCards],['transactions','Activity',ReceiptText],['bills','Bills',CalendarDays],['debts','Debts',CreditCard],['payoff','Payoff Plan',Target],['spending','Spending',BarChart3],['insights','Insights',Lightbulb]]
 
-export default function App(){
- const [data,setData]=useState(load),[page,setPage]=useState('dashboard'),[modal,setModal]=useState(null),[form,setForm]=useState({}),[spendingGroup,setSpendingGroup]=useState('category'),[spendingSort,setSpendingSort]=useState('total'),[reportPeriod,setReportPeriod]=useState('month')
- const [saveError,setSaveError]=useState(storageError); const update=next=>{try{const ready=prepareData(next);persistState(ready);setData(ready);setSaveError('');return true}catch(error){setSaveError(error.message);return false}}; const action=fn=>{try{return fn()}catch(error){setSaveError(error.message);return false}}; useEffect(()=>{const refresh=()=>setData(previous=>prepareData(previous));window.addEventListener('focus',refresh);const timer=setInterval(refresh,60000);return()=>{window.removeEventListener('focus',refresh);clearInterval(timer)}},[])
+export default function App({initialData,persist=()=>Promise.resolve()}){
+ const [data,setData]=useState(()=>prepareData(initialData||loadState(starter))),[page,setPage]=useState('dashboard'),[modal,setModal]=useState(null),[form,setForm]=useState({}),[spendingGroup,setSpendingGroup]=useState('category'),[spendingSort,setSpendingSort]=useState('total'),[reportPeriod,setReportPeriod]=useState('month')
+ const [saveError,setSaveError]=useState(''); const update=next=>{try{const ready=prepareData(next);setData(ready);setActiveData(ready);Promise.resolve(persist(ready)).then(()=>setSaveError('')).catch(error=>setSaveError(`Cloud save failed: ${error.message||'Your most recent change was not confirmed.'}`));return true}catch(error){setSaveError(error.message);return false}}; const action=fn=>{try{return fn()}catch(error){setSaveError(error.message);return false}}; useEffect(()=>{setActiveData(data)},[data])
  const cashAccounts=data.accounts.filter(a=>a.type!=='credit'), checking=data.accounts.filter(a=>a.type==='checking'), cards=data.accounts.filter(a=>a.type==='credit')
  const cash=cashAccounts.reduce((s,a)=>s+Number(a.balance),0), cardDebt=cards.reduce((s,a)=>s+Number(a.balance),0), minimums=cards.reduce((s,a)=>s+Number(a.minimum||0),0)
  const payoffDebts=cards.map(a=>({id:a.id,name:a.name,balance:a.balance,apr:a.apr||0,minimum:a.minimum||0}))

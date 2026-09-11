@@ -2,7 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
-## v0.10.6 — Clearer backup counts and bill occurrences
+## v0.11.0 — Private cloud sync
+
+- Added Google sign-in and a private Firebase cloud record for each signed-in person.
+- Added a deliberate first-time import screen so existing browser data is never uploaded without the user selecting it.
+- Moved normal saves, backup restore, account status, and save feedback to the cloud-aware experience.
+- Added restrictive Firestore rules that allow each signed-in person to read and write only their own record.
+
+## v0.11.0 — Clearer backup counts and bill occurrences
 
 - Fixed unreadable count numbers in the light-theme Data & backup section.
 - A paid recurring-bill occurrence now says **Paid for** its date rather than **Due**, making an accidental future-occurrence assignment obvious.
