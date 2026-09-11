@@ -47,7 +47,7 @@ test('v0.11.0 renders a responsive forecast and income-schedule matching',async(
   const server=await createServer({server:{middlewareMode:true},appType:'custom'})
   try{
     const {default:IncomeForecast}=await server.ssrLoadModule('/src/IncomeForecast.jsx')
-    const html=renderToStaticMarkup(React.createElement(IncomeForecast,{data:fixture(),update(){}}))
+    const html=renderToStaticMarkup(React.createElement(IncomeForecast,{data:fixture(),update(){},now}))
     for(const text of ['Payday forecast','Next expected deposit','$1,000.00','Due before payday','$0.00','Projected 30-day cash','$2,900.00','Forecast only'])assert.ok(html.includes(text),text)
   }finally{await server.close()}
 })
