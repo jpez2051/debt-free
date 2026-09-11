@@ -22,7 +22,7 @@ test('manual schedule selection prefers an overdue unconfirmed paycheck',()=>{
 
 test('ready-to-confirm UI and prefilled income handoff ship in v0.11.0',async()=>{
   const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=source
-  assert.match(output,/const VERSION='0\.11\.0'/)
+  assert.match(output,/const VERSION='0\.11\.1'/)
   assert.match(output,/const confirmExpectedIncome=/)
   assert.match(output,/amount:schedule\.amount/)
   assert.match(output,/scheduledIncomeDate:occurrence\.date/)
