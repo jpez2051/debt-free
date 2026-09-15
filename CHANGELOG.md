@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.3 — Reliable cloud exports
+
+- Fixed backup and anonymized-review downloads being blocked by strict validation of otherwise usable cloud records.
+- The anonymized review export now remains available for diagnosing the very records that need attention.
+
 ## v0.11.2 — Restored cloud backup access
 
 - Fixed the Settings entry disappearing after the signed-in cloud workspace loaded.

@@ -21,4 +21,5 @@ test('cloud migration keeps Firebase access private to the signed-in owner', asy
   assert.match(settings, /Backup restored to your private cloud record/)
   assert.match(settings, /\[cloudTick\]/)
   assert.match(settings, /Download anonymized review/)
+  assert.match(settings, /hasExportableData/)
 })
