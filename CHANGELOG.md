@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.2 — Restored cloud backup access
+
+- Fixed the Settings entry disappearing after the signed-in cloud workspace loaded.
+- Restored access to Download backup, Restore backup, Download anonymized review, themes, and account controls on desktop and phone.
+
 ## v0.11.1 — Clear cloud onboarding for everyone
 
 - New people with no browser records can now create a blank private cloud workspace directly after sign-in.

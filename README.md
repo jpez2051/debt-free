@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.11.1**
+**Current build: v0.11.2**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.11.1 can do
+## What v0.11.2 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.
@@ -22,6 +22,7 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Sign in with Google and keep one private cloud record per account through Firebase.
 - Copy existing browser-only records into the private cloud through an explicit one-time migration.
 - Start a blank private cloud workspace when there are no browser records to bring over, then restore a backup later if needed.
+- Keep Settings reachable after cloud sign-in, including both recovery-backup and anonymized-review downloads.
 - Keep a downloadable backup as an independent recovery copy.
 - Run automated payoff-engine tests and a production build on GitHub Actions.
 - Open native calendar pickers from every transaction, payment, and credit-card date field.
