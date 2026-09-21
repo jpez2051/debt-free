@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.4 — Clearer recurring bill tracking
+
+- Rebuilt the Bills workflow around one primary action: mark the current bill paid or charged.
+- Prevented an older unpaid occurrence from being hidden behind a future charge, and clearly identify the due month a recorded entry belongs to.
+- Moved history behind a review-and-corrections disclosure, with a safe option to reassign an entry to its correct bill occurrence.
+- Added an in-flow way to record an actual invoice total when it differs from the recurring estimate.
+
 ## v0.11.3 — Reliable cloud exports
 
 - Fixed backup and anonymized-review downloads being blocked by strict validation of otherwise usable cloud records.

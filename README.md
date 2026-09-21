@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.11.3**
+**Current build: v0.11.4**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.11.3 can do
+## What v0.11.4 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.
@@ -33,6 +33,8 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Review possible duplicates, schedule mismatches, statement gaps, stale reconciliations, unusual score changes, and historical coverage in Data Health.
 - Confirm intentional duplicate or unusual records, retain that decision in backups, and reopen reviewed findings later.
 - Track recurring-bill payments, partial payments, and remaining obligations.
+- Keep recurring bill entry in one place: mark the current bill paid or charged, then use a collapsed history only for review and corrections.
+- Clearly show the bill occurrence a charge belongs to, support early or late occurrence selection, and update an invoice total when it differs from the estimate.
 - Show month-over-month and six-month spending trends.
 - Organize spending by main category and subcategory, including groceries, restaurants, fast food, snacks, fuel, subscriptions, and other practical distinctions.
 - Learn each frequently used merchant's usual category while keeping the suggestion editable for mixed-purpose stores.
