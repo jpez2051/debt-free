@@ -13,7 +13,7 @@ test('v0.8.0 records recurring card charges without treating them as cash paymen
 
 test('v0.8.0 exposes subscription schedules, autopay, archive, and account protections',async()=>{
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
-  assert.match(app,/Log recurring charge/)
+  assert.match(app,/Mark recurring charge/)
   assert.match(app,/Next renewal/)
   assert.match(app,/Automatic payment/)
   assert.match(app,/Its type cannot be changed/)
