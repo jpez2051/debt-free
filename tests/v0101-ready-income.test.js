@@ -20,6 +20,25 @@ test('manual schedule selection prefers an overdue unconfirmed paycheck',()=>{
   assert.equal(nextOccurrenceForSchedule(schedule,[],new Date(2026,8,11,12)).date,'2026-09-10')
 })
 
+test('a confirmed payday advances the visible schedule to the next unconfirmed date',async()=>{
+  const recorded={id:'income',kind:'income',incomeScheduleId:'pay',scheduledIncomeDate:'2026-09-10',date:'2026-09-10T12:00:00.000Z',localDate:'2026-09-10',accountId:'bank',merchant:'Employer',amount:975}
+  const server=await createServer({server:{middlewareMode:true},appType:'custom'})
+  try{
+    const {default:IncomeForecast}=await server.ssrLoadModule('/src/IncomeForecast.jsx')
+    const html=renderToStaticMarkup(React.createElement(IncomeForecast,{data:data([recorded]),update(){},now:new Date(2026,8,22,12)}))
+    assert.match(html,/Next expected Sep 24, 2026/)
+    assert.doesNotMatch(html,/next Sep 10, 2026/)
+    assert.doesNotMatch(html,/READY TO CONFIRM/)
+  }finally{await server.close()}
+})
+
+test('dashboard reporting controls sit outside the payday panel and above reporting totals',async()=>{
+  const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
+  const forecast=await readFile(new URL('../src/IncomeForecast.jsx',import.meta.url),'utf8')
+  assert.match(app,/<IncomeForecast data=\{data\} update=\{update\} onConfirmIncome=\{confirmExpectedIncome\}\/><PeriodPicker value=\{reportPeriod\} onChange=\{setReportPeriod\}\/><section className="stats four">/)
+  assert.doesNotMatch(forecast,/reporting-period-anchor/)
+})
+
 test('ready-to-confirm UI and prefilled income handoff ship in v0.11.0',async()=>{
   const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=source
   assert.match(output,/const VERSION='/)

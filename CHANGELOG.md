@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.10 — Clear payday and reporting layout
+
+- Give reporting-period controls their own space between the payday forecast and dashboard totals.
+- Show the next unconfirmed payday from the income schedule instead of repeating its original start date.
+
 ## v0.11.9 — Clear reporting context
 
 - Place the reporting-period controls directly after the forward-looking payday forecast and before the historical reporting totals they control.
