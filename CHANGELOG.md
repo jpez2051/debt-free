@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.12 — Keep statement months separate
+
+- Treat October card minimums as unpaid when September payments were carried forward by editing an existing statement due date.
+- Flag these cycles and provide a guided correction that restores the paid September statement and creates a separate October statement without changing balances or payment records.
+- Prevent a paid statement from being moved to another month; manage existing card minimums and due dates through Statements rather than account tiles.
+- Clarify that historical payments do not change balances but can satisfy a minimum if deliberately assigned to that statement.
+
 ## v0.11.11 — Correct mislinked paydays
 
 - Flag deposits linked to a payday more than a week later and offer a direct review action.

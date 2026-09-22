@@ -104,8 +104,15 @@ export function saveRecurringBill(source,form,now=new Date()){
   return prepareData(data,now)
 }
 
+export function statementCycleMismatch(statement,payments) {
+  if(!statement||!calendarDate(statement.dueDate))return ''
+  return payments.filter(p=>p.assignmentStatus==='confirmed'&&p.statementId===statement.id&&p.cardId===statement.cardId)
+    .map(p=>p.cycleDueDateBefore)
+    .find(due=>calendarDate(due)&&due.slice(0,7)!==statement.dueDate.slice(0,7)&&statement.id.endsWith(`-${due}`))||''
+}
 export function statementTotals(statement, payments, now=new Date()) {
-  const actualPaid=sum(payments.filter(p=>p.assignmentStatus==='confirmed'&&p.statementId===statement.id&&p.cardId===statement.cardId&&posted(p,now)))
+  const oldDue=statementCycleMismatch(statement,payments)
+  const actualPaid=sum(payments.filter(p=>p.assignmentStatus==='confirmed'&&p.statementId===statement.id&&p.cardId===statement.cardId&&posted(p,now)&&(!oldDue||p.cycleDueDateBefore!==oldDue)))
   return {required:statement.minimum,actualPaid,paid:Math.min(statement.minimum,actualPaid),remaining:dollars(Math.max(0,cents(statement.minimum)-cents(actualPaid)))}
 }
 export function cycleTotals(cycle, payments, now=new Date()) {
@@ -182,12 +189,22 @@ export function saveStatement(source,form,now=new Date()) {
   const minimum=amount(form.minimum,true),old=data.cardStatements.find(s=>s.id===form.id)
   if(data.cardStatements.some(s=>s.id!==form.id&&s.cardId===form.cardId&&s.dueDate===form.dueDate)) throw new Error('A statement already exists for this card and due date.')
   if(old&&old.cardId!==form.cardId) throw new Error('A statement cannot be moved to another card.')
+  if(old&&old.dueDate.slice(0,7)!==form.dueDate.slice(0,7)&&data.payments.some(p=>p.cardId===old.cardId&&p.statementId===old.id&&p.assignmentStatus==='confirmed')&&form.dueDate!==statementCycleMismatch(old,data.payments))throw new Error('This statement has assigned payments. Keep its original due month and add a separate statement for the next month.')
   const item={...old,id:old?.id||crypto.randomUUID(),cardId:form.cardId,dueDate:form.dueDate,minimum,needsReview:false}
   data.cardStatements=old?data.cardStatements.map(s=>s.id===old.id?item:s):[...data.cardStatements,item]
   if(form.includesPastDue)data.cardStatements=data.cardStatements.map(s=>s.id!==item.id&&s.cardId===item.cardId&&s.dueDate<item.dueDate&&!s.supersededBy&&statementTotals(s,data.payments,now).remaining>0?{...s,supersededBy:item.id}:s)
   const latest=data.cardStatements.filter(s=>s.cardId===form.cardId&&!s.needsReview).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
   data.accounts=data.accounts.map(a=>a.id===form.cardId?{...a,nextDueDate:latest.dueDate,minimum:latest.minimum}:a)
   return data
+}
+export function repairMovedStatement(source,id,originalMinimum,now=new Date()) {
+  const data=prepareData(source,now),statement=data.cardStatements.find(s=>s.id===id),originalDue=statementCycleMismatch(statement,data.payments)
+  if(!originalDue)throw new Error('No moved statement cycle was found for this card.')
+  if(data.cardStatements.some(s=>s.id!==id&&s.cardId===statement.cardId&&s.dueDate===originalDue))throw new Error('The original statement already exists. Review payment assignments instead.')
+  if(originalMinimum==null||String(originalMinimum).trim()==='')throw new Error('Enter the original statement minimum before separating these months.')
+  const originalAmount=amount(originalMinimum,true),newDue=statement.dueDate,newMinimum=statement.minimum
+  const restored=saveStatement(data,{id,cardId:statement.cardId,dueDate:originalDue,minimum:originalAmount},now)
+  return saveStatement(restored,{cardId:statement.cardId,dueDate:newDue,minimum:newMinimum},now)
 }
 export function confirmBillCycle(source,id,value,now=new Date(),dueDate) {
   const data=prepareData(source,now),cycle=data.billCycles.find(c=>c.id===id)
