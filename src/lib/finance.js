@@ -137,13 +137,17 @@ export function billDisplayCycle(data,bill,now=new Date()) {
   }
   return cycles.filter(c=>c.dueDate>=today&&totals(c).remaining>0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]
 }
-export function cashAfterObligations(data, now=new Date()) {
+export function cashAfterObligations(data, now=new Date(), throughDate='') {
   // Only cash-funded bills and confirmed card minimums consume this estimate.
   // Card charges already live in debt balances; reserving them again has no release rule.
   const obligations=trackedObligations(data,now)
   const cash=data.accounts.filter(a=>a.type!=='credit').reduce((n,a)=>n+cents(a.balance),0)
-  const reserved=obligations.filter(o=>o.kind==='card'||o.fundingType!=='credit').reduce((n,o)=>n+cents(o.remaining),0)
+  const reserved=obligations.filter(o=>(!throughDate||o.dateKey<=throughDate)&&(o.kind==='card'||o.fundingType!=='credit')).reduce((n,o)=>n+cents(o.remaining),0)
   return dollars(cash-reserved)
+}
+export function cashThroughMonthEnd(data,now=new Date()) {
+  const monthEnd=localDate(new Date(now.getFullYear(),now.getMonth()+1,0,12))
+  return cashAfterObligations(data,now,monthEnd)
 }
 function amount(value, allowZero=false) {
   const n=Number(value)

@@ -5,7 +5,7 @@ import { validateData } from '../src/lib/backup.js'
 
 test('v0.7.1 protects linked bill records and preserves negative shortfalls',async()=>{
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
-  assert.match(app,/safeToSpend=cashAfterObligations\(data\)/)
+  assert.match(app,/safeToSpend=cashThroughMonthEnd\(data,cashToday\)/)
   assert.match(app,/trackedObligations\(data\)/)
   assert.match(app,/historical payment record\(s\).*Archive it instead/)
   assert.match(app,/cycleTotals\(cycle,data\.billPayments\)\.remaining/)
@@ -22,7 +22,7 @@ test('backup validation accepts negative cash balances but rejects broken refere
 test('the direct source uses device-local dates and honest empty states',async()=>{
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   assert.match(app,/dateValue\(\)/)
-  assert.match(app,/cashAfterObligations/)
+  assert.match(app,/cashThroughMonthEnd/)
   assert.match(app,/cards\.length\?String\(plan\.months\)/)
   assert.match(app,/confirmOutflow/)
 })

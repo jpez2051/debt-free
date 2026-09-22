@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.13 — Separate this month's cash from next month's forecast
+
+- Show cash after obligations due through the current month, including unpaid overdue items, instead of subtracting every future obligation.
+- Advance that cutoff automatically on the first of each month while keeping the 30-day paycheck and obligation forecast visible.
+- Clarify that future card statements still require the actual issuer minimum and due date; the app does not silently create an official statement.
+
 ## v0.11.12 — Keep statement months separate
 
 - Treat October card minimums as unpaid when September payments were carried forward by editing an existing statement due date.
