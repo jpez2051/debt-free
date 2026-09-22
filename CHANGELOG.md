@@ -2,6 +2,10 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.9 — Clear reporting context
+
+- Place the reporting-period controls directly after the forward-looking payday forecast and before the historical reporting totals they control.
+
 ## v0.11.8 — Clear first-income setup
 
 - Make the setup step accurately open and track the first real income entry.

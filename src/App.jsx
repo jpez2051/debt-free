@@ -14,6 +14,7 @@ import { setActiveData } from './lib/cloudState.js'
 import { loadState } from './lib/storage.js'
 import './currencyPrecision.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AlertTriangle, ArrowDown, ArrowRightLeft, ArrowUp, Banknote, BarChart3, CalendarDays, Check, CreditCard, Gauge, Home, Lightbulb, Pencil, Plus, ReceiptText, ShoppingBag, Sparkles, Target, Trash2, TrendingUp, WalletCards, X } from 'lucide-react'
 import { orderDebts, projectedDate, simulatePayoff, simulatePayoffSchedule } from './lib/payoff.js'
 import { upcomingObligations } from './lib/obligations.js'
@@ -21,7 +22,7 @@ import { filterByReportingPeriod, REPORTING_PERIODS } from './lib/reporting.js'
 import SpendingTrends from './SpendingTrends.jsx'
 import SetupGuide from './SetupGuide.jsx'
 
-const VERSION='0.11.8'
+const VERSION='0.11.9'
 const STORAGE_KEY='debt-free-v040'
 const categories=CATEGORY_GROUPS.map(group=>group.name)
 const starter={
@@ -128,7 +129,7 @@ function IconButton({label,onClick,danger,children}){return <button type="button
 function Insight({text,label='Insight',tone='default'}){const Icon=tone==='warning'?AlertTriangle:tone==='utilization'?Gauge:tone==='spending'?ShoppingBag:Sparkles;return <div className={`insight-card insight-${tone}`}><div><Icon size={16}/></div><p><small>{label}</small>{text}</p></div>}
 function Empty({text='Nothing logged yet.'}){return <div className="empty">{text}</div>}
 function PageHead({title,text,action,onClick,children}){return <><div className="page-head"><div><h2>{title}</h2><p>{text}</p></div>{action&&<button className="primary" onClick={onClick}><Plus size={16}/>{action}</button>}</div>{children}</>}
-function PeriodPicker({value,onChange}){return <section className="period-picker" aria-label="Reporting period"><span>Reporting period</span><div>{REPORTING_PERIODS.map(period=><button type="button" key={period.id} className={value===period.id?'active':''} aria-pressed={value===period.id} onClick={()=>onChange(period.id)}>{period.label}</button>)}</div></section>}
+function PeriodPicker({value,onChange}){const [ready,setReady]=useState(false);useEffect(()=>setReady(true),[]);const control=<section className="period-picker" aria-label="Reporting period"><span>Reporting period</span><div>{REPORTING_PERIODS.map(period=><button type="button" key={period.id} className={value===period.id?'active':''} aria-pressed={value===period.id} onClick={()=>onChange(period.id)}>{period.label}</button>)}</div></section>,anchor=ready&&typeof document!=='undefined'?document.getElementById('reporting-period-anchor'):null;return anchor?createPortal(control,anchor):control}
 function Field({label,children}){return <label>{label}{children}</label>}
 function DateInput({value,onChange}){const openPicker=e=>{try{e.currentTarget.showPicker?.()}catch{}};return <input type="date" value={value} onChange={onChange} onClick={openPicker}/>}
 function SpendingBreakdown({purchases,accounts,groupBy,sortBy}){const groups=useMemo(()=>{const accountNames=Object.fromEntries(accounts.map(a=>[a.id,a.name])),grouped=new Map();purchases.forEach(t=>{const category=t.category?.trim()||'Other',subcategory=t.subcategory?.trim()||'Other',merchant=t.merchant?.trim()||'Other',account=accountNames[t.accountId]||'Unknown account',name=groupBy==='category'?category:groupBy==='subcategory'?subcategory:groupBy==='merchant'?merchant:account,detail=groupBy==='category'?`${subcategory} · ${merchant} · ${account}`:groupBy==='subcategory'?`${category} · ${merchant} · ${account}`:groupBy==='merchant'?`${category} · ${subcategory} · ${account}`:`${category} · ${subcategory} · ${merchant}`,item=grouped.get(name)||{name,total:0,last:0,details:new Map()};item.total+=Number(t.amount);item.last=Math.max(item.last,new Date(t.date).getTime()||0);item.details.set(detail,(item.details.get(detail)||0)+Number(t.amount));grouped.set(name,item)});const rows=[...grouped.values()].map(item=>({...item,details:[...item.details].map(([name,total])=>({name,total})).sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name))}));return rows.sort((a,b)=>sortBy==='name'?a.name.localeCompare(b.name):sortBy==='recent'?b.last-a.last||b.total-a.total:b.total-a.total||a.name.localeCompare(b.name))},[purchases,accounts,groupBy,sortBy]);const title={category:'Main category',subcategory:'Subcategory',merchant:'Merchant',account:'Account'}[groupBy];return <Panel title={`By ${title}`} kicker="WHERE MONEY WENT">{groups.length?groups.map(group=><article className="spending-group" key={group.name}><div className="spending-group-head"><strong>{group.name}</strong><b>{money2.format(group.total)}</b></div><div className="spending-detail-list">{group.details.map(detail=><div key={detail.name}><span>{detail.name}</span><b>{money2.format(detail.total)}</b></div>)}</div></article>):<Empty text="Log an expense to see its spending breakdown."/>}</Panel>}
