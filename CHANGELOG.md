@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.11 — Correct mislinked paydays
+
+- Flag deposits linked to a payday more than a week later and offer a direct review action.
+- Let users unlink a mistaken payday without changing the logged income or account balance.
+- Ask for the deposit date before choosing a schedule and prevent an old deposit from automatically claiming a future payday.
+
 ## v0.11.10 — Clear payday and reporting layout
 
 - Give reporting-period controls their own space between the payday forecast and dashboard totals.

@@ -260,6 +260,9 @@ function applyTransactionBalances(data,entry,direction=1){
   if(account)changeBalance(data,account.id,direction*transactionEffect(entry,account))
   if(entry.kind==='transfer'&&entry.toAccountId){const destination=data.accounts.find(a=>a.id===entry.toAccountId);if(destination)changeBalance(data,destination.id,direction*cents(entry.amount))}
 }
+export function incomeLinkAheadOfDeposit(scheduledDate,depositDate){
+  return calendarDate(scheduledDate)&&calendarDate(depositDate)&&(Date.parse(scheduledDate)-Date.parse(depositDate))/86400000>7
+}
 export function saveLedgerTransaction(source,form,kind,now=new Date()) {
   const data=prepareData(source,now),account=data.accounts.find(a=>a.id===form.accountId),destination=kind==='transfer'&&form.toAccountId?data.accounts.find(a=>a.id===form.toAccountId):null,value=amount(form.amount),old=data.transactions.find(t=>t.id===form.id)
   if(!account)throw new Error('Choose an account.')
@@ -270,6 +273,7 @@ export function saveLedgerTransaction(source,form,kind,now=new Date()) {
   if(kind==='transfer'&&!TRANSFER_PURPOSES.includes(form.transferPurpose))throw new Error('Choose what this transfer is for.')
   const incomeSchedule=kind==='income'&&form.incomeScheduleId?data.incomeSchedules.find(item=>item.id===form.incomeScheduleId):null
   if(kind==='income'&&form.incomeScheduleId&&(!incomeSchedule||!calendarDate(form.scheduledIncomeDate)))throw new Error('Choose a valid expected deposit to match this income.')
+  if(incomeSchedule&&incomeLinkAheadOfDeposit(form.scheduledIncomeDate,form.date))throw new Error('This deposit is more than a week before the expected payday. Check the date or unlink the expected deposit so a future paycheck is not marked received.')
   if(old&&!old.historical)applyTransactionBalances(data,old,-1)
   const merchant=kind==='transfer'?(destination?.name||form.merchant).trim():(form.merchant||({income:'Income',purchase:'Expense',refund:'Refund'}[kind])).trim()
   const item={id:old?.id||crypto.randomUUID(),...dateFields(form.date,now),kind,accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{}),...(incomeSchedule?{incomeScheduleId:incomeSchedule.id,scheduledIncomeDate:form.scheduledIncomeDate}:{})}

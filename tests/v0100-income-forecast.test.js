@@ -41,7 +41,7 @@ test('logging a linked paycheck accepts its actual amount and replaces the forec
 test('v0.11.0 renders a responsive forecast and income-schedule matching',async()=>{
   const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=source
   assert.match(output,/const VERSION='/)
-  assert.match(output,/<IncomeForecast data=\{data\} update=\{update\} onConfirmIncome=\{confirmExpectedIncome\}/)
+  assert.match(output,/<IncomeForecast data=\{data\} update=\{update\} onConfirmIncome=\{confirmExpectedIncome\} onReviewIncome=\{openIncome\}/)
   assert.match(output,/Expected income schedule/)
   assert.match(output,/nextOccurrenceForSchedule/)
   const server=await createServer({server:{middlewareMode:true},appType:'custom'})

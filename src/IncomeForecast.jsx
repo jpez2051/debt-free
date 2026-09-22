@@ -1,14 +1,14 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react'
 import { CalendarDays, CheckCircle2, Pencil, Plus, X } from 'lucide-react'
 import { cashFlowForecast, INCOME_FREQUENCIES, nextOccurrenceForSchedule, readyIncomeOccurrences, saveIncomeSchedule, setIncomeScheduleActive } from './lib/incomeForecast.js'
-import { localDate } from './lib/finance.js'
+import { incomeLinkAheadOfDeposit, localDate, transactionDay } from './lib/finance.js'
 
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
 const dateLabel=value=>new Date(`${value}T12:00:00`).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})
 
-export default function IncomeForecast({data,update,onConfirmIncome,now=new Date()}){
+export default function IncomeForecast({data,update,onConfirmIncome,onReviewIncome,now=new Date()}){
   const [form,setForm]=useState(null),[error,setError]=useState(''),dialogRef=useRef(null),openerRef=useRef(null)
-  const forecast=useMemo(()=>cashFlowForecast(data,now),[data,now]),ready=useMemo(()=>readyIncomeOccurrences(data,now),[data,now]),schedules=data.incomeSchedules||[]
+  const forecast=useMemo(()=>cashFlowForecast(data,now),[data,now]),ready=useMemo(()=>readyIncomeOccurrences(data,now),[data,now]),schedules=data.incomeSchedules||[],mismatchedIncome=(data.transactions||[]).filter(item=>item.kind==='income'&&item.incomeScheduleId&&incomeLinkAheadOfDeposit(item.scheduledIncomeDate,transactionDay(item)))
   const close=()=>setForm(null)
   const open=item=>{openerRef.current=document.activeElement;setError('');setForm(item?{...item}:{name:'Paycheck',amount:'',accountId:data.accounts.find(a=>a.type==='checking')?.id||data.accounts.find(a=>a.type!=='credit')?.id||'',frequency:'biweekly',nextDate:localDate(),active:true})}
   useEffect(()=>{if(!form)return;dialogRef.current?.querySelector('input')?.focus();return()=>openerRef.current?.focus?.()},[Boolean(form)])
@@ -18,6 +18,7 @@ export default function IncomeForecast({data,update,onConfirmIncome,now=new Date
   const coverage=forecast.coverageBeforeIncome
   return <section className="panel content-panel income-forecast">
     <div className="income-forecast-head"><div><span className="kicker">LOOK AHEAD</span><h2>Payday forecast</h2><p className="muted">Expected income helps explain timing without changing today’s balances.</p></div><button className="secondary" type="button" onClick={()=>open()}><Plus size={15}/> Expected income</button></div>
+    {mismatchedIncome.map(item=><div className="income-link-issue" key={item.id}><div><strong>Check a paycheck link</strong><small>A deposit recorded {dateLabel(transactionDay(item))} is linked to the {dateLabel(item.scheduledIncomeDate)} payday. This may hide that upcoming deposit.</small></div><button className="secondary compact" type="button" onClick={()=>onReviewIncome?.(item)}>Review income link</button></div>)}
     {ready.length>0&&<div className="ready-income-list">{ready.map(item=><div className="ready-income" key={item.id}><CheckCircle2 size={22}/><div><span>READY TO CONFIRM</span><strong>{item.name} · {money.format(item.amount)}</strong><small>Expected {dateLabel(item.date)}. Confirm the real deposit before it changes your account balance.</small></div><button className="primary" type="button" onClick={()=>onConfirmIncome?.(item)}>Confirm or edit amount</button></div>)}</div>}
     {forecast.nextIncome?<div className="forecast-grid">
       <div><span>Next expected deposit</span><strong>{money.format(forecast.nextIncome.amount)}</strong><small>{forecast.nextIncome.name} · {dateLabel(forecast.nextIncome.date)}</small></div>
