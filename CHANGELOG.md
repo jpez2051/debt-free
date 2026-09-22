@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.6 — Focused account ordering
+
+- Keep checking and other cash accounts at the top of Accounts.
+- Arrange open credit-card tiles from the smallest balance to the largest, with zero-balance cards last.
+
 ## v0.11.5 — Clear monthly bill status
 
 - Keep a completed monthly bill visible as paid through the end of its due month, while the Dashboard continues to plan for the next unpaid obligation.
