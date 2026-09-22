@@ -21,7 +21,7 @@ import { filterByReportingPeriod, REPORTING_PERIODS } from './lib/reporting.js'
 import SpendingTrends from './SpendingTrends.jsx'
 import SetupGuide from './SetupGuide.jsx'
 
-const VERSION='0.11.7'
+const VERSION='0.11.8'
 const STORAGE_KEY='debt-free-v040'
 const categories=CATEGORY_GROUPS.map(group=>group.name)
 const starter={

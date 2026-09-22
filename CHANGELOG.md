@@ -2,6 +2,10 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.8 — Clear first-income setup
+
+- Make the setup step accurately open and track the first real income entry.
+
 ## v0.11.7 — Safer cloud workspaces and more useful planning
 
 - Detect a newer save from another device before overwriting it, offer a reload action, and update an idle workspace from the cloud.
