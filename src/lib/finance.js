@@ -118,6 +118,18 @@ export function trackedObligations(data, now=new Date()) {
   const bills=data.billCycles.map(c=>{const bill=data.bills.find(b=>b.id===c.billId);return {...c,...cycleTotals(c,data.billPayments,now),cycleId:c.id,id:`bill-${c.id}`,kind:'bill',name:bill?.name||'Bill',active:bill?.active!==false,fundingType:find(bill?.accountId)?.type||'unassigned',accountName:find(bill?.accountId)?.name||'Unassigned',dueDate:new Date(`${c.dueDate}T12:00:00`),dateKey:c.dueDate}}).filter(c=>(c.active||c.dateKey<=today)&&(c.remaining>0||c.dateKey>=today||c.needsReview))
   return [...cards,...bills].sort((a,b)=>a.dateKey.localeCompare(b.dateKey)||a.name.localeCompare(b.name))
 }
+// The Bills page should reassure someone that this month's bill was handled,
+// while the dashboard remains focused on future unpaid obligations.
+export function billDisplayCycle(data,bill,now=new Date()) {
+  const today=localDate(now),cycles=(data.billCycles||[]).filter(c=>c.billId===bill.id),totals=cycle=>cycleTotals(cycle,data.billPayments||[],now)
+  const overdue=cycles.filter(c=>c.dueDate<today&&totals(c).remaining>0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]
+  if(overdue)return overdue
+  if(bill.frequency==='monthly'){
+    const currentMonth=today.slice(0,7),current=cycles.filter(c=>c.dueDate.startsWith(currentMonth)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]
+    if(current)return current
+  }
+  return cycles.filter(c=>c.dueDate>=today&&totals(c).remaining>0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]
+}
 export function cashAfterObligations(data, now=new Date()) {
   // Only cash-funded bills and confirmed card minimums consume this estimate.
   // Card charges already live in debt balances; reserving them again has no release rule.
@@ -195,9 +207,15 @@ export function removeStatement(source,id,now=new Date()) {
 }
 export function reassignPayment(source,id,targetId,kind,now=new Date()) {
   if(kind==='card')return assignCardPayments(source,[id],targetId,now)
-  const data=prepareData(source,now),p=data.billPayments.find(p=>p.id===id),target=data.billCycles.find(x=>x.id===targetId)
+  const data=prepareData(source,now),p=data.billPayments.find(p=>p.id===id)
+  let target=data.billCycles.find(x=>x.id===targetId)
+  if(kind==='bill'&&p&&!target&&String(targetId).startsWith('new:')){
+    const dueDate=String(targetId).slice(4),bill=data.bills.find(b=>b.id===p.billId)
+    if(calendarDate(dueDate)&&bill){target={id:crypto.randomUUID(),billId:bill.id,dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false};data.billCycles.push(target)}
+  }
   if(kind!=='bill'||!p||!target||p.billId!==target.billId) throw new Error('Choose an occurrence belonging to the same bill.')
   p.cycleId=targetId
+  if(String(targetId).startsWith('new:'))p.cycleId=target.id
   return data
 }
 export function assignCardPayments(source,ids,targetId,now=new Date()) {

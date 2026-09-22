@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.5 — Clear monthly bill status
+
+- Keep a completed monthly bill visible as paid through the end of its due month, while the Dashboard continues to plan for the next unpaid obligation.
+- Allow a mistaken bill-payment assignment to be moved to a missing prior occurrence without changing the payment date, amount, or account balances.
+
 ## v0.11.4 — Clearer recurring bill tracking
 
 - Rebuilt the Bills workflow around one primary action: mark the current bill paid or charged.
