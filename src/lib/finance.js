@@ -236,8 +236,10 @@ export function reconcileAccount(source,form,now=new Date()) {
   const data=prepareData(source,now),a=data.accounts.find(a=>a.id===form.accountId),balance=Number(form.balance)
   if(!a||form.balance===''||form.balance==null||!Number.isFinite(balance)||Math.abs(balance*100-Math.round(balance*100))>0.00001||!form.reason?.trim()) throw new Error('Choose an account, enter its actual balance with at most two decimal places, and explain the adjustment.')
   const delta=cents(balance)-cents(a.balance)
-  data.adjustments.unshift({id:crypto.randomUUID(),accountId:a.id,before:a.balance,after:dollars(cents(balance)),delta:dollars(delta),reason:form.reason.trim(),date:now.toISOString()})
-  changeBalance(data,a.id,delta)
+  if(delta) {
+    data.adjustments.unshift({id:crypto.randomUUID(),accountId:a.id,before:a.balance,after:dollars(cents(balance)),delta:dollars(delta),reason:form.reason.trim(),date:now.toISOString()})
+    changeBalance(data,a.id,delta)
+  }
   data.accounts=data.accounts.map(x=>x.id===a.id?{...x,reconciledAt:now.toISOString()}:x)
   return data
 }

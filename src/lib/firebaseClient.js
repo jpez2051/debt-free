@@ -1,4 +1,5 @@
 import { RELEASE_VERSION } from '../release.js'
+import { cloudFingerprint, CloudConflictError } from './cloudSync.js'
 
 // Firebase web configuration identifies this public app; Firestore rules protect the private records.
 const firebaseConfig = {
@@ -46,11 +47,21 @@ export async function readCloudData(uid) {
   return snapshot.exists() ? snapshot.data()?.data || null : null
 }
 
-export async function writeCloudData(uid, data) {
+export async function writeCloudData(uid, data, expectedFingerprint) {
   const { database, firestoreSdk } = await getServices()
-  await firestoreSdk.setDoc(firestoreSdk.doc(database, 'users', uid), {
-    data,
-    version: RELEASE_VERSION,
-    updatedAt: firestoreSdk.serverTimestamp(),
+  const reference=firestoreSdk.doc(database, 'users', uid)
+  await firestoreSdk.runTransaction(database, async transaction => {
+    const current=await transaction.get(reference)
+    if (expectedFingerprint && current.exists() && cloudFingerprint(current.data()?.data) !== expectedFingerprint) throw new CloudConflictError()
+    transaction.set(reference, {
+      data,
+      version: RELEASE_VERSION,
+      updatedAt: firestoreSdk.serverTimestamp(),
+    })
   })
+}
+
+export async function watchCloudData(uid, callback) {
+  const { database, firestoreSdk } = await getServices()
+  return firestoreSdk.onSnapshot(firestoreSdk.doc(database, 'users', uid), snapshot => callback(snapshot.exists()?snapshot.data()?.data||null:null), error => callback(undefined,error))
 }

@@ -15,9 +15,12 @@ export function orderDebts(debts, strategy = 'avalanche') {
 }
 
 export function simulatePayoff(debts, extra = 0, strategy = 'avalanche', maxMonths = 1200) {
+  return simulatePayoffSchedule(debts, () => extra, strategy, maxMonths)
+}
+
+export function simulatePayoffSchedule(debts, extraForMonth, strategy = 'avalanche', maxMonths = 1200) {
   const items = debts.map(normalizeDebt)
-  const monthlyExtra = Math.max(0, Number(extra) || 0)
-  const monthlyBudget = items.reduce((sum, debt) => sum + debt.minimum, 0) + monthlyExtra
+  const minimumBudget = items.reduce((sum, debt) => sum + debt.minimum, 0)
   let months = 0
   let interest = 0
   const timeline = [items.reduce((sum, debt) => sum + debt.balance, 0)]
@@ -26,7 +29,7 @@ export function simulatePayoff(debts, extra = 0, strategy = 'avalanche', maxMont
     return { months: 0, interest: 0, timeline, paidOff: true }
   }
 
-  if (monthlyBudget <= 0) {
+  if (minimumBudget+Math.max(0,Number(extraForMonth(1))||0) <= 0) {
     return { months: 0, interest: 0, timeline, paidOff: false }
   }
 
@@ -42,7 +45,7 @@ export function simulatePayoff(debts, extra = 0, strategy = 'avalanche', maxMont
 
     // Keep the original total monthly debt budget constant. As accounts are
     // eliminated, their old minimums automatically become attack money.
-    let remainingBudget = monthlyBudget
+    let remainingBudget = minimumBudget+Math.max(0,Number(extraForMonth(months))||0)
     for (const debt of items) {
       if (debt.balance <= 0) continue
       const scheduled = Math.min(debt.minimum, debt.balance, remainingBudget)

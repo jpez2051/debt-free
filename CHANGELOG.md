@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.7 — Safer cloud workspaces and more useful planning
+
+- Detect a newer save from another device before overwriting it, offer a reload action, and update an idle workspace from the cloud.
+- Add clear cloud-workspace controls, more explicit sync status, and a guided setup path for pay schedules and first reconciliation.
+- Record a matching reconciliation as a check rather than a fake $0 adjustment.
+- Add a temporary payment-boost scenario that leaves the saved payoff plan unchanged.
+
 ## v0.11.6 — Focused account ordering
 
 - Keep checking and other cash accounts at the top of Accounts.
