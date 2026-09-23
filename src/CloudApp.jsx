@@ -31,10 +31,11 @@ export default function CloudApp() {
   const queue = useRef(Promise.resolve())
   const fingerprint = useRef('')
   const saving = useRef(0)
+  const pending = useRef(null)
   const watcher = useRef(() => {})
   const [workspaceVersion,setWorkspaceVersion]=useState(0)
 
-  const actions=()=>({ signOut:logout, restore:restoreCloudData, reload:reloadCloudData, clear:clearCloudData })
+  const actions=()=>({ signOut:logout, restore:restoreCloudData, reload:reloadCloudData, clear:clearCloudData, retry:retryPendingSave })
   function acceptCloudData(saved, signedIn, sync='Saved in the cloud') {
     const ready=prepareData(saved||starter)
     fingerprint.current=cloudFingerprint(saved||starter)
@@ -44,8 +45,8 @@ export default function CloudApp() {
   async function startWatching(signedIn) {
     watcher.current?.()
     const unsubscribe=await watchCloudData(signedIn.uid,(remote,error)=>{
-      if(error){setCloudSession({status:'ready',user:signedIn,sync:'Cloud updates need attention',actions:actions()});return}
-      if(!remote||saving.current)return
+      if(error){setCloudSession({status:'ready',user:signedIn,sync:pending.current?'Cloud save failed — retry or download a backup before leaving':'Cloud updates need attention',actions:actions()});return}
+      if(!remote||saving.current||pending.current)return
       const nextFingerprint=cloudFingerprint(remote)
       if(nextFingerprint===fingerprint.current)return
       acceptCloudData(remote,signedIn,'Updated from another device')
@@ -67,6 +68,7 @@ export default function CloudApp() {
     })
     return ()=>{stop();watcher.current?.()}
   }, [])
+  useEffect(()=>{const warn=event=>{if(!pending.current)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[])
 
   async function login() {
     setMessage('')
@@ -74,7 +76,8 @@ export default function CloudApp() {
     catch (error) { setMessage(error?.message || 'Google sign-in could not be completed.') }
   }
   async function logout() {
-    try { await signOutUser() } catch (error) { setMessage(error?.message || 'Could not sign out right now.') }
+    if(pending.current&&!confirm('The latest changes have not been saved to the cloud. Download a backup in Settings before signing out. Sign out anyway?'))return
+    try { await signOutUser();pending.current=null } catch (error) { setMessage(error?.message || 'Could not sign out right now.') }
   }
   async function importLocalData() {
     setMessage('')
@@ -93,37 +96,53 @@ export default function CloudApp() {
   }
   async function restoreCloudData(incoming) {
     if (!user) throw new Error('Sign in before restoring a backup.')
+    if(pending.current)throw new Error('The latest changes are unsaved. Retry saving or download a backup before restoring.')
     await writeCloudData(user.uid, incoming, fingerprint.current)
     acceptCloudData(incoming,user,'Backup restored to the cloud')
   }
   async function reloadCloudData() {
     if(!user) return
+    if(pending.current)throw new Error('The latest changes are unsaved. Retry saving or download a backup before reloading.')
     const saved=await readCloudData(user.uid)
     if(!saved) throw new Error('No cloud workspace was found to reload.')
     acceptCloudData(saved,user,'Reloaded latest cloud copy')
   }
   async function clearCloudData() {
     if(!user) throw new Error('Sign in before clearing this workspace.')
+    if(pending.current)throw new Error('The latest changes are unsaved. Retry saving or download a backup before clearing.')
     const fresh=prepareData(starter)
     await writeCloudData(user.uid,fresh,fingerprint.current)
     acceptCloudData(fresh,user,'Cloud workspace cleared')
   }
   const persist = data => {
     const snapshot = prepareData(data)
+    pending.current=snapshot
     setActiveData(snapshot)
     saving.current+=1
     setCloudSession({ status:'ready', user, sync:'Saving…', actions:actions() })
     const save = queue.current.catch(() => {}).then(async () => {
       await writeCloudData(user.uid, snapshot, fingerprint.current)
       fingerprint.current=cloudFingerprint(snapshot)
-      setCloudSession({ status:'ready', user, sync:'Saved in the cloud', actions:actions() })
+      if(pending.current===snapshot){pending.current=null;setCloudSession({ status:'ready', user, sync:'Saved in the cloud', actions:actions() })}
     })
     queue.current = save
     return save.then(value=>{saving.current=Math.max(0,saving.current-1);return value}).catch(error => {
       saving.current=Math.max(0,saving.current-1)
-      setCloudSession({ status:'ready', user, sync:error?.code==='cloud/conflict'?'Newer cloud copy available — reload before continuing':'Cloud save failed — keep this page open and try again', actions:actions() })
+      setCloudSession({ status:'ready', user, sync:error?.code==='cloud/conflict'?'Cloud conflict — download a backup before reloading':'Cloud save failed — retry or download a backup before leaving', actions:actions() })
       throw error
     })
+  }
+  async function retryPendingSave(){
+    if(!pending.current)return
+    const retry=queue.current.catch(()=>{}).then(async()=>{
+      const snapshot=pending.current
+      if(!snapshot)return
+      await writeCloudData(user.uid,snapshot,fingerprint.current)
+      fingerprint.current=cloudFingerprint(snapshot)
+      if(pending.current===snapshot){pending.current=null;setCloudSession({status:'ready',user,sync:'Saved in the cloud',actions:actions()});window.dispatchEvent(new Event('debt-free-save-recovered'))}
+    })
+    queue.current=retry
+    return retry
   }
 
   if (phase === 'checking' || phase === 'loading') return <CloudScreen><span className="kicker">DEBT FREE CLOUD</span><h1>Opening your private financial workspace…</h1><p>Checking your secure sign-in and cloud record.</p></CloudScreen>

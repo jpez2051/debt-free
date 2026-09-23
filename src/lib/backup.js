@@ -29,6 +29,7 @@ export function validateData(data) {
   if((data.adjustments||[]).some(a=>!account(a.accountId)||!number(a.before)||!number(a.after)||!number(a.delta)||!date(a.date)||!a.reason))return false
   if((data.incomeSchedules||[]).some(item=>!item.name||!account(item.accountId)||account(item.accountId).type==='credit'||!amount(item.amount)||Number(item.amount)<=0||!calendarDate(item.nextDate)||!['weekly','biweekly','semimonthly','monthly'].includes(item.frequency)||(item.frequency==='semimonthly'&&(!Number.isInteger(Number(item.secondPayDay))||Number(item.secondPayDay)<1||Number(item.secondPayDay)>31))))return false
   if(data.extra!==undefined&&!amount(data.extra))return false
+  if(data.cashPlan!==undefined&&(!data.cashPlan||typeof data.cashPlan!=='object'||!calendarDate(`${data.cashPlan.month}-01`)||!amount(data.cashPlan.buffer)||!amount(data.cashPlan.essentialsRemaining)))return false
   if(data.dataHealthAcknowledgements!==undefined&&(!Array.isArray(data.dataHealthAcknowledgements)||data.dataHealthAcknowledgements.some(x=>typeof x!=='string'||!x)||new Set(data.dataHealthAcknowledgements).size!==data.dataHealthAcknowledgements.length))return false
   return true
 }

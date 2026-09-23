@@ -80,9 +80,9 @@ export function setIncomeScheduleActive(source,id,active){
 }
 
 export function cashFlowForecast(data,now=new Date(),days=30){
-  const today=localDate(now),end=addDays(today,days),cashCents=(data.accounts||[]).filter(a=>a.type!=='credit').reduce((total,a)=>total+cents(a.balance),0)
-  const income=expectedIncomeOccurrences(data,now,days),nextIncome=income[0]||null
-  const obligations=trackedObligations(data,now).filter(item=>item.remaining>0&&item.dateKey<=end&&(item.kind==='card'||item.fundingType!=='credit'))
+  const today=localDate(now),end=addDays(today,days),cashCents=(data.accounts||[]).filter(a=>a.type==='checking').reduce((total,a)=>total+cents(a.balance),0)
+  const income=expectedIncomeOccurrences(data,now,days).filter(item=>(data.accounts||[]).find(account=>account.id===item.accountId)?.type==='checking'),nextIncome=income[0]||null
+  const obligations=trackedObligations(data,now).filter(item=>item.remaining>0&&item.dateKey<=end&&(item.kind==='card'||(item.fundingType!=='credit'&&item.fundingType!=='savings')))
   const beforeNext=nextIncome?obligations.filter(item=>item.dateKey<nextIncome.date):obligations
   const dueBeforeIncomeCents=beforeNext.reduce((total,item)=>total+cents(item.remaining),0)
   const obligationsCents=obligations.reduce((total,item)=>total+cents(item.remaining),0)

@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.14 — Make cash guidance more honest and cloud failures recoverable
+
+- Base the month-end cash breakdown and 30-day forecast on checking, while showing savings separately.
+- Let users enter remaining essentials and a protected checking buffer before showing possible room for an extra debt payment; refresh essentials each month.
+- Remove the arbitrary 25% discretionary-spending recommendation and clarify forecast limitations.
+- Keep failed cloud saves visibly unsaved, allow a retry, and guard reload, restore, clearing, sign-out, and navigation before an unsaved copy is discarded. Downloadable backups remain available in Settings.
+
 ## v0.11.13 — Separate this month's cash from next month's forecast
 
 - Show cash after obligations due through the current month, including unpaid overdue items, instead of subtracting every future obligation.

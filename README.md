@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.11.13**
+**Current build: v0.11.14**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.11.13 can do
+## What v0.11.14 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.
@@ -47,6 +47,8 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Track recurring subscriptions paid from cash or charged to credit cards.
 - Forecast payday timing without adding expected income to current account balances.
 - Compare obligations due before the next deposit with current cash and project a limited 30-day cash position.
+- Show checking, unpaid minimums, and checking-funded bills separately; keep savings out of the extra-payment estimate.
+- Require a current-month essentials estimate and protected buffer before showing possible room for an extra payment.
 - Match a real income entry to its expected deposit so the forecast never counts both.
 - Flag a scheduled paycheck as ready to confirm and allow its actual amount and date to be corrected before posting.
 - Keep selected subscription subcategories intact, including Cloud Storage and News & Digital Media.
@@ -54,7 +56,7 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Assign payments to explicit card statements without automatically advancing due dates.
 - Preserve overdue bill occurrences and confirm each invoice's actual amount and due date.
 - Record refunds separately from income, and reconcile balances with an adjustment history.
-- Detect conflicting tabs, handle failed saves, and retain local recovery snapshots.
+- Detect conflicting tabs and visibly flag failed cloud saves with a retry and downloadable backup path.
 
 ## Important changes in v0.9.0
 
@@ -65,7 +67,7 @@ For a subscription price increase, edit the bill's Expected amount for newly gen
 - Under **Debts → Statements**, confirm imported statement dates/minimums and review payment allocations. Older records did not preserve every statement fact; the app flags those assignments instead of silently guessing they are verified.
 - Add a new statement when your issuer provides it. Extra payments stay on the selected statement. If a new minimum includes past-due minimums, explicitly carry those earlier obligations forward to avoid reserving them twice.
 - Under **Bills → Bill occurrences**, confirm the actual invoice and date. Existing occurrences retain their amounts when a future estimate changes. Autopay does not automatically record a payment.
-- **Cash after tracked obligations** is not a spending allowance. It includes savings, subtracts tracked cash bills and card minimums, and does not protect groceries, an emergency fund, or other unlogged needs. Card-funded subscriptions become debt; they are not separately reserved as cash.
+- **Checking after known dues** is not a spending allowance. It excludes savings, subtracts tracked checking-funded bills and card minimums, and does not know about unlogged groceries or other needs. The optional extra-payment estimate also subtracts the user's current-month essentials and protected buffer. Card-funded subscriptions become debt; they are not separately reserved as cash.
 - New profiles start with **$0 extra** in the payoff plan. Existing choices are preserved. Projections assume no new borrowing or fees and use approximate monthly interest.
 - Use **Accounts → Reconcile balance** for corrections and **Activity → Log refund** for money returned by a merchant. Refund corrections can be made by removing and re-entering the refund.
 - The first successful save retains the prior stored data locally. Settings provides a previous-state recovery option and raw-data download. Keep an external backup: browser clearing removes local recovery copies too.
@@ -87,6 +89,6 @@ Use Node 22 and pnpm 11.19.0. Verification runs unit/workflow and server-render 
 
 ## Product direction
 
-Full code consolidation and Firebase sync remain explicitly deferred. See `release-notes/v0.9.0-qa.md` for the manual usability and mobile checklist; automated rendering is not a substitute for device testing.
+Firebase sign-in and sync are active. A future migration from one whole-workspace Firestore document to smaller records is still needed before large-scale use. Full code consolidation and real-device mobile testing also remain. See `release-notes/v0.9.0-qa.md` for the manual usability and mobile checklist; automated rendering is not a substitute for device testing.
 
 See [CHANGELOG.md](CHANGELOG.md) for build history.

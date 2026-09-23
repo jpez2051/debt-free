@@ -31,7 +31,7 @@ test('overdue unpaid items still reduce the current-month cash estimate',()=>{
 
 test('dashboard labels its cash figure as current month while keeping the 30-day forecast',async()=>{
   const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
-  assert.match(source,/safeToSpend=cashThroughMonthEnd\(data,cashToday\)/)
+  assert.match(source,/safeToSpend=cashPosition\(data,cashToday\)\.afterKnownDues/)
   assert.match(source,/setInterval\(\(\)=>setTodayKey\(localDate\(\)\)/)
   assert.match(source,/CASH THIS MONTH/)
   assert.match(source,/Cash after dues through/)
