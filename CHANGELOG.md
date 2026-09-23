@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.15 — Show actual payments above minimum
+
+- Summarize payments assigned to confirmed card statements and calculate what was paid above each cycle's minimum, with a card filter and recent-cycle history.
+- Keep unassigned and extra/general payments visible but out of statement-based totals until deliberately assigned; exclude unreviewed, superseded, and mismatched statement months.
+- Explain that this is actual recorded effort, separate from the Payoff Plan's assumed future extra payment. No balances or existing records are changed.
+
 ## v0.11.14 — Make cash guidance more honest and cloud failures recoverable
 
 - Base the month-end cash breakdown and 30-day forecast on checking, while showing savings separately.

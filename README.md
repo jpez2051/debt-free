@@ -1,10 +1,10 @@
 # Debt Free
 
-**Current build: v0.11.14**
+**Current build: v0.11.15**
 
 Debt Free is a privacy-first debt payoff planner and progress tracker built to make the path out of debt visible, measurable, and motivating.
 
-## What v0.11.14 can do
+## What v0.11.15 can do
 
 - Track multiple debts with balance, APR, and minimum payment.
 - Compare debt avalanche and debt snowball strategies.
@@ -12,6 +12,7 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Roll freed minimum payments into the next payoff target.
 - Adjust extra monthly payments and instantly recalculate the plan.
 - Record payments and update balances.
+- See payments above confirmed statement minimums by card and billing cycle, calculated from the payment history already recorded.
 - Undo recent payment entries and restore balances.
 - Edit and remove debt accounts.
 - Visualize the projected balance decline over time.
