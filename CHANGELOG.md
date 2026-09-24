@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.17 — Clarify additional card payments by statement
+
+- Rename the unlinked payment choice to “General card payment — no statement selected” so it is not confused with paying above a minimum.
+- Show the selected statement’s due date and whether its minimum is met; explain that additional payments linked to September count above September’s minimum, not toward October.
+- Use the same language in payment history, Activity, and assignment review. Existing records and balances are unchanged.
+
 ## v0.11.16 — Repair cloud saves for optional payment fields
 
 - Omit absent statement dates on extra and unassigned card payments, and remove cleared statement links without leaving invalid fields.

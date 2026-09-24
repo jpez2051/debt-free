@@ -107,8 +107,8 @@ test('actual payment form defaults to review and never chooses a statement from 
   assert.equal(form.statementId,'')
   assert.equal(form.paymentIntent,'review')
   assert.match(output,/cardId:e.target.value,statementId:'',paymentIntent:'review'/)
-  assert.match(output,/<Field label="Apply payment"><select value=/)
-  assert.match(output,/Extra \/ general payment/)
+  assert.match(output,/<Field label="Count payment toward"><select value=/)
+  assert.match(output,/General card payment — no statement selected/)
   assert.match(output,/Not sure — review later/)
 })
 test('bulk review renders dates, amount, previous unverified assignment and accessible controls',async()=>{
@@ -116,7 +116,7 @@ test('bulk review renders dates, amount, previous unverified assignment and acce
   try{
     const {default:Review}=await server.ssrLoadModule('/src/PaymentAssignments.jsx')
     const html=renderToStaticMarkup(React.createElement(Review,{data:prepareData(fixture(),now),update(){throw new Error('Rendering must not save')}}))
-    for(const text of ['2026-08-08','$25.00','Needs review','Select all shown','Show only payments needing review','Extra/general payment — no statement needed','Historical/general — no statement needed','Keep for review','type="checkbox"'])assert.ok(html.includes(text),text)
+    for(const text of ['2026-08-08','$25.00','Needs review','Select all shown','Show only payments needing review','General card payment — no statement selected','Historical payment — no statement selected','Keep for review','type="checkbox"'])assert.ok(html.includes(text),text)
     const {default:Summary}=await server.ssrLoadModule('/src/UpcomingSummary.jsx')
     const dashboard=renderToStaticMarkup(React.createElement(Summary,{data:prepareData(fixture(),now),now,onStatements(){}}))
     assert.ok(dashboard.includes('recent payment may affect this minimum'))

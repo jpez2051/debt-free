@@ -245,7 +245,7 @@ export function assignCardPayments(source,ids,targetId,now=new Date()) {
   const payments=ids.map(id=>data.payments.find(p=>p.id===id))
   if(payments.some(p=>!p)||new Set(payments.map(p=>p.cardId)).size!==1)throw new Error('Select payments belonging to one card.')
   const general=targetId==='__general__',extra=targetId==='__extra__',target=data.cardStatements.find(s=>s.id===targetId&&s.cardId===payments[0].cardId)
-  if(targetId&&!general&&!extra&&!target)throw new Error('Choose a statement belonging to the selected card, extra/general, historical/general, or review later.')
+  if(targetId&&!general&&!extra&&!target)throw new Error('Choose a statement belonging to the selected card, a general payment with no statement, a historical payment with no statement, or review later.')
   for(const payment of payments){
     payment.statementId=target?.id||''
     payment.assignmentStatus=target?'confirmed':extra?'extra':general||payment.historical?'general':'unassigned'

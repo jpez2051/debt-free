@@ -5,6 +5,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
 import { paymentEffortRows, paymentEffortSummary } from '../src/lib/paymentEffort.js'
+import { recordCardPayment, statementTotals } from '../src/lib/finance.js'
 
 const now=new Date(2026,8,23,12)
 const fixture=()=>({
@@ -29,6 +30,16 @@ test('two payments in one confirmed cycle show the amount above its minimum with
   const rows=paymentEffortRows(fixture(),now)
   assert.deepEqual(rows.map(row=>[row.statementId,row.paid,row.minimum,row.aboveMinimum]),[['sep',1000,80,920],['aug',50,90,0]])
   assert.deepEqual(paymentEffortSummary(rows),{cycles:2,paid:1050,aboveMinimum:920})
+})
+
+test('an additional September payment increases September above-minimum effort, not October minimum',()=>{
+  const data={financeVersion:1,accounts:[{id:'card',name:'Card',type:'credit',balance:9500,minimum:500,nextDueDate:'2026-10-20'},{id:'bank',name:'Checking',type:'checking',balance:3000}],cardStatements:[{id:'sep',cardId:'card',dueDate:'2026-09-20',minimum:500,needsReview:false},{id:'oct',cardId:'card',dueDate:'2026-10-20',minimum:450,needsReview:false}],payments:[{id:'minimum',cardId:'card',bankId:'bank',amount:500,date:'2026-09-19T12:00:00Z',localDate:'2026-09-19',statementId:'sep',assignmentStatus:'confirmed'}],transactions:[],bills:[]}
+  const result=recordCardPayment(data,{cardId:'card',bankId:'bank',amount:1000,date:'2026-09-23',statementId:'sep'},now)
+  assert.equal(result.accounts.find(account=>account.id==='card').balance,8500)
+  assert.equal(result.accounts.find(account=>account.id==='bank').balance,2000)
+  assert.equal(statementTotals(result.cardStatements[0],result.payments,now).actualPaid,1500)
+  assert.equal(statementTotals(result.cardStatements[1],result.payments,now).remaining,450)
+  assert.deepEqual(paymentEffortRows(result,now).map(row=>[row.dueDate,row.aboveMinimum]),[['2026-09-20',1000]])
 })
 
 test('reallocating a payment changes the insight but not the original payment or balances',()=>{
