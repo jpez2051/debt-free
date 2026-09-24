@@ -6,7 +6,18 @@ export function stableValue(value) {
   return JSON.stringify(value)
 }
 
-export const cloudFingerprint = data => stableValue(data || {})
+// Firestore rejects undefined fields. Omit optional object fields consistently on
+// both sides of the conflict check, including records created before this fix.
+export function cloudSafeData(value) {
+  if(Array.isArray(value))return value.map(item=>{
+    if(item===undefined)throw new Error('A cloud record contains an empty list item. Nothing was saved.')
+    return cloudSafeData(item)
+  })
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).filter(([,item])=>item!==undefined).map(([key,item])=>[key,cloudSafeData(item)]))
+  return value
+}
+
+export const cloudFingerprint = data => stableValue(cloudSafeData(data || {}))
 
 export class CloudConflictError extends Error {
   constructor() {

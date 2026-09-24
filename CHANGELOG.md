@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.16 — Repair cloud saves for optional payment fields
+
+- Omit absent statement dates on extra and unassigned card payments, and remove cleared statement links without leaving invalid fields.
+- Clean older undefined optional fields at the cloud-write boundary and compare conflict fingerprints against the same clean representation.
+- Preserve payment amounts, account balances, and statement assignments while restoring reliable cloud saves.
+
 ## v0.11.15 — Show actual payments above minimum
 
 - Summarize payments assigned to confirmed card statements and calculate what was paid above each cycle's minimum, with a card filter and recent-cycle history.

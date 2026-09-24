@@ -165,7 +165,7 @@ export function recordCardPayment(source, form, now=new Date()) {
   const data=prepareData(source,now),card=data.accounts.find(a=>a.id===form.cardId&&a.type==='credit'),bank=data.accounts.find(a=>a.id===form.bankId&&a.type!=='credit'),statement=data.cardStatements.find(s=>s.id===form.statementId&&s.cardId===form.cardId)
   if(!card||!bank||(form.statementId&&!statement)) throw new Error('Choose a cash account and card, and a statement belonging to that card or leave it for review.')
   const value=amount(form.amount),historical=Boolean(form.historical)
-  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement?.id||'',assignmentStatus:statement?'confirmed':historical?'general':form.paymentIntent==='extra'?'extra':'unassigned',cycleDueDateBefore:statement?.dueDate,cycleAdvanced:false}
+  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement?.id||'',assignmentStatus:statement?'confirmed':historical?'general':form.paymentIntent==='extra'?'extra':'unassigned',...(statement?{cycleDueDateBefore:statement.dueDate}:{}),cycleAdvanced:false}
   if(!historical){changeBalance(data,bank.id,-cents(value));changeBalance(data,card.id,-cents(value))}
   data.payments.unshift(p)
   return data
@@ -221,7 +221,7 @@ export function removeStatement(source,id,now=new Date()) {
   const data=prepareData(source,now),statement=data.cardStatements.find(s=>s.id===id)
   if(!statement)throw new Error('Statement not found.')
   if(data.payments.some(p=>p.statementId===id))throw new Error('Reassign this statement’s payments or leave them unassigned before removing it.')
-  data.cardStatements=data.cardStatements.filter(s=>s.id!==id).map(s=>s.supersededBy===id?{...s,supersededBy:undefined}:s)
+  data.cardStatements=data.cardStatements.filter(s=>s.id!==id).map(s=>{if(s.supersededBy!==id)return s;const {supersededBy,...rest}=s;return rest})
   const latest=data.cardStatements.filter(s=>s.cardId===statement.cardId).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
   data.accounts=data.accounts.map(a=>a.id===statement.cardId?{...a,nextDueDate:latest?.dueDate||'',dueDay:0,minimum:latest?.minimum||0}:a)
   return data
