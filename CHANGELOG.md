@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.18 — Space account cards from balance review
+
+- Add a consistent gap below the Accounts tile grid before the balance-reconciliation panel, including on narrow phones.
+- Leave financial records and calculations unchanged.
+
 ## v0.11.17 — Clarify additional card payments by statement
 
 - Rename the unlinked payment choice to “General card payment — no statement selected” so it is not confused with paying above a minimum.
