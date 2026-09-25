@@ -66,7 +66,7 @@ test('dashboard reporting controls sit outside the payday panel and above report
 
 test('ready-to-confirm UI and prefilled income handoff ship in v0.11.0',async()=>{
   const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=source
-  assert.match(output,/const VERSION='/)
+  assert.match(output,/const VERSION=RELEASE_VERSION/)
   assert.match(output,/const confirmExpectedIncome=/)
   assert.match(output,/amount:schedule\.amount/)
   assert.match(output,/scheduledIncomeDate:occurrence\.date/)

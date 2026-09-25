@@ -1,25 +1,12 @@
 import { readFile } from 'node:fs/promises'
+import { RELEASE_VERSION } from '../src/release.js'
 
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
-const releaseSource = await readFile(new URL('../src/release.js', import.meta.url), 'utf8')
-const versionFile = (await readFile(new URL('../VERSION', import.meta.url), 'utf8')).trim()
-const match = releaseSource.match(/RELEASE_VERSION\s*=\s*['"]([^'"]+)['"]/)
+const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
 
-if (!match) {
-  console.error('Version check failed: src/release.js does not declare RELEASE_VERSION.')
+if (!/^\d+\.\d+\.\d+$/.test(packageJson.version) || RELEASE_VERSION !== packageJson.version || !appSource.includes('const VERSION=RELEASE_VERSION')) {
+  console.error('Version check failed: the app must display the version from package.json.')
   process.exit(1)
 }
 
-const versions = {
-  'package.json': packageJson.version,
-  'release.js': match[1],
-  VERSION: versionFile,
-}
-
-const unique = new Set(Object.values(versions))
-if (unique.size !== 1) {
-  console.error(`Version check failed: ${Object.entries(versions).map(([name, value]) => `${name}=${value}`).join(', ')}`)
-  process.exit(1)
-}
-
-console.log(`Version check passed: v${packageJson.version}`)
+console.log(`Version check passed: v${RELEASE_VERSION}`)

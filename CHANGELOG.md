@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.19 — Clearer, more readable financial workspace
+
+- Use `package.json` as the only release-number source. The app, backups, and cloud record now read it directly; the redundant `VERSION` file and hard-coded UI/README numbers are gone.
+- Use darker accent colors in light/system-light mode, increase several tiny labels, and adopt one section-gap token instead of negative spacing offsets.
+- Preserve nonzero cents in dashboard and planning figures rather than rounding them away.
+- Collapse detailed balance checks, statements, bill occurrences, and card-payment history while keeping every record accessible.
+- Sort bill rows from a copy so rendering cannot reorder the saved bill array.
+
 ## v0.11.18 — Space account cards from balance review
 
 - Add a consistent gap below the Accounts tile grid before the balance-reconciliation panel, including on narrow phones.
