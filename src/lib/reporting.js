@@ -29,7 +29,7 @@ export function monthlyTrend(items,months=6,now=new Date()){
 export function monthlyCategoryTrend(items,months=6,now=new Date(),limit=6){
   const endOfToday=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999),start=new Date(now.getFullYear(),now.getMonth()-months+1,1),totals=new Map()
   for(const item of items){const d=new Date(item.localDate?`${item.localDate}T12:00:00`:item.date);if(Number.isNaN(d.getTime())||d<start||d>endOfToday)continue;const category=item.category||'Other';totals.set(category,(totals.get(category)||0)+Math.round((Number(item.amount)||0)*100))}
-  const leaders=[...totals].sort((a,b)=>b[1]-a[1]).slice(0,limit).map(([name])=>name),categories=[...leaders,'Other']
+  const leaders=[...totals].filter(([name])=>name!=='Other').sort((a,b)=>b[1]-a[1]).slice(0,limit).map(([name])=>name),categories=[...leaders,'Other']
   const rows=Array.from({length:months},(_,index)=>{const offset=months-1-index,date=new Date(now.getFullYear(),now.getMonth()-offset,1,12),year=date.getFullYear(),month=date.getMonth(),values=Object.fromEntries(categories.map(c=>[c,0]));for(const item of items){const d=new Date(item.localDate?`${item.localDate}T12:00:00`:item.date);if(Number.isNaN(d.getTime())||d>endOfToday||d.getFullYear()!==year||d.getMonth()!==month)continue;const category=leaders.includes(item.category||'Other')?(item.category||'Other'):'Other';values[category]+=Math.round((Number(item.amount)||0)*100)}for(const category of categories)values[category]=values[category]/100;return {id:`${year}-${String(month+1).padStart(2,'0')}`,label:date.toLocaleDateString('en-US',{month:'short'}),values,total:Object.values(values).reduce((n,v)=>n+v,0)}})
   return {categories:categories.filter(c=>rows.some(r=>r.values[c]>0)),months:rows}
 }

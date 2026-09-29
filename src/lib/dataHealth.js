@@ -1,17 +1,35 @@
 import { cents, localDate, transactionDay } from './finance.js'
+import { zeroBalanceCardState } from './cardPresentation.js'
+import { validateData } from './backup.js'
 
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
 const dayDistance=(a,b)=>Math.round(Math.abs(new Date(`${a}T12:00:00`)-new Date(`${b}T12:00:00`))/86400000)
 
 export function analyzeDataHealth(data,now=new Date()){
   const today=localDate(now),issues=[],duplicates=new Map()
+  if(!validateData(data))issues.push({kind:'integrity',level:'warning',title:'Backup restore check failed',detail:'The current records contain a structural conflict. Download a recovery copy and repair the issue before relying on normal backup restore or cloud saving.'})
+  const approximateBytes=new TextEncoder().encode(JSON.stringify(data)).length
+  if(approximateBytes>500000)issues.push({kind:'cloud-size',level:'warning',title:'Cloud workspace is getting large',detail:'Your records are approaching the size where one-document cloud saving can become unreliable. Download a backup; Debt Free needs a split-record storage migration before the workspace grows much more.'})
   for(const item of data.transactions||[]){
     const key=[item.kind,item.accountId,transactionDay(item),cents(item.amount),String(item.merchant||'').trim().toLocaleLowerCase()].join('|')
     duplicates.set(key,[...(duplicates.get(key)||[]),item])
   }
   for(const matches of duplicates.values())if(matches.length>1)issues.push({id:`duplicate-activity:${matches.map(x=>x.id).sort().join(':')}`,kind:'duplicate',level:'warning',acknowledgeable:true,acknowledgementLabel:'Keep both — this is correct',title:'Possible duplicate activity',detail:`${matches.length} matching entries for ${matches[0].merchant||'an activity item'} on ${transactionDay(matches[0])} at ${money.format(matches[0].amount)}. Review before removing anything.`})
 
-  for(const card of (data.accounts||[]).filter(a=>a.type==='credit'))if(!(data.cardStatements||[]).some(s=>s.cardId===card.id&&!s.supersededBy&&!s.needsReview&&s.dueDate>=today))issues.push({kind:'statement',level:'warning',title:`${card.name} needs a current statement`,detail:'Add or confirm the next due date and minimum so upcoming obligations are complete.'})
+  for(const card of (data.accounts||[]).filter(a=>a.type==='credit')){
+    const zero=zeroBalanceCardState(data,card,now)
+    if(zero){
+      if(zero.unpaidStatementId)issues.push({kind:'statement',level:'warning',title:`Check ${card.name} statement against its $0 balance`,detail:zero.detail})
+      continue
+    }
+    if(!(data.cardStatements||[]).some(s=>s.cardId===card.id&&!s.supersededBy&&!s.needsReview&&s.dueDate>=today))issues.push({kind:'statement',level:'warning',title:`${card.name} needs a current statement`,detail:'Add or confirm the next due date and minimum so upcoming obligations are complete.'})
+  }
+  const unverified=(data.cardStatements||[]).filter(s=>!s.supersededBy&&s.dueDate>=today&&Number(s.minimum)>0&&s.verification!=='issuer-confirmed'&&(data.accounts||[]).some(a=>a.id===s.cardId&&cents(a.balance)>0))
+  if(unverified.length)issues.push({kind:'statement-source',level:'warning',title:`${unverified.length} upcoming card minimum${unverified.length===1?' is':'s are'} not issuer-confirmed`,detail:'These amounts may be estimates or older imported values. Check the due dates and minimums against the actual card statements under Debts; forecasts currently include them.'})
+
+  const occurrences=new Map()
+  for(const cycle of data.billCycles||[]){const key=`${cycle.billId}|${cycle.dueDate}`;occurrences.set(key,(occurrences.get(key)||0)+1)}
+  for(const [key,count] of occurrences)if(count>1){const [billId,dueDate]=key.split('|');issues.push({kind:'bill-cycle',level:'warning',title:`Duplicate bill occurrence for ${data.bills.find(b=>b.id===billId)?.name||'a bill'}`,detail:`${count} occurrences share ${dueDate}. Do not log another payment until these are repaired; balances must be preserved.`})}
 
   const paidCycles=new Set((data.billPayments||[]).map(p=>p.cycleId).filter(Boolean))
   for(const bill of (data.bills||[]).filter(b=>b.active!==false)){

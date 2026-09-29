@@ -1,5 +1,5 @@
 import { validateData } from './backup.js'
-import { prepareData } from './finance.js'
+import { prepareData, repairDuplicateBillCycles } from './finance.js'
 import { STORAGE_KEY, BACKUP_SCHEMA } from '../release.js'
 
 export function createRepository(storage, key=STORAGE_KEY) {
@@ -9,7 +9,7 @@ export function createRepository(storage, key=STORAGE_KEY) {
       try {
         expected=storage.getItem(key);loaded=true
         if(!expected)return prepareData(fallback)
-        const data=JSON.parse(expected)
+        const data=repairDuplicateBillCycles(JSON.parse(expected)).data
         if(!validateData(data))throw new Error('Stored records need recovery.')
         return prepareData({...fallback,...data})
       } catch {
@@ -51,7 +51,7 @@ export const persistState = data => {
 export function parseBackup(text) {
   const parsed=JSON.parse(text)
   if(parsed.schema&&parsed.schema!==BACKUP_SCHEMA)throw new Error('This backup uses an unsupported format. Keep the file and use a compatible app version.')
-  const data=parsed.data||parsed
+  const data=repairDuplicateBillCycles(parsed.data||parsed).data
   if(data.financeVersion!==undefined&&data.financeVersion!==1)throw new Error('This backup was created by an unsupported finance-data version.')
   if(!validateData(data))throw new Error('The backup contains invalid or conflicting records.')
   return prepareData(data)

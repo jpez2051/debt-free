@@ -1,5 +1,6 @@
 import { RELEASE_VERSION } from '../release.js'
 import { cloudFingerprint, cloudSafeData, CloudConflictError } from './cloudSync.js'
+import { validateData } from './backup.js'
 
 // Firebase web configuration identifies this public app; Firestore rules protect the private records.
 const firebaseConfig = {
@@ -48,6 +49,7 @@ export async function readCloudData(uid) {
 }
 
 export async function writeCloudData(uid, data, expectedFingerprint) {
+  if(!validateData(data))throw new Error('Cloud save stopped: records need a data-integrity repair. Download a backup and review Data Health before making more changes.')
   const { database, firestoreSdk } = await getServices()
   const reference=firestoreSdk.doc(database, 'users', uid)
   await firestoreSdk.runTransaction(database, async transaction => {

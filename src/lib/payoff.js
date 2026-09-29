@@ -14,6 +14,14 @@ export function orderDebts(debts, strategy = 'avalanche') {
   })
 }
 
+export function payoffBudget(cards,extra=0,rollFreedMinimums=false) {
+  const activeMinimums=cards.filter(card=>Number(card.balance)>0).reduce((sum,card)=>sum+Number(card.minimum||0),0)
+  const freedMinimums=cards.filter(card=>Number(card.balance)<=0).reduce((sum,card)=>sum+Number(card.minimum||0),0)
+  const extraBudget=Math.max(0,Number(extra)||0)+(rollFreedMinimums?freedMinimums:0)
+  return {activeMinimums,freedMinimums,extraBudget,monthlyBudget:activeMinimums+extraBudget,
+    debts:cards.map(card=>({...card,minimum:Number(card.balance)>0?Number(card.minimum||0):0}))}
+}
+
 export function simulatePayoff(debts, extra = 0, strategy = 'avalanche', maxMonths = 1200) {
   return simulatePayoffSchedule(debts, () => extra, strategy, maxMonths)
 }

@@ -21,15 +21,20 @@ export function validateData(data) {
   if((data.billPayments||[]).some(p=>!account(p.bankId)||!bill(p.billId)||!amount(p.amount)||!date(p.date)||(p.subcategory!==undefined&&typeof p.subcategory!=='string')))return false
   if((data.creditScores||[]).some(s=>!amount(s.score)||Number(s.score)<250||Number(s.score)>900||!date(s.date)))return false
   if((data.cardStatements||[]).some(s=>!account(s.cardId)||account(s.cardId).type!=='credit'||!calendarDate(s.dueDate)||!amount(s.minimum)))return false
+  if((data.cardStatements||[]).some(s=>s.verification!==undefined&&!['issuer-confirmed','estimated','unverified'].includes(s.verification)))return false
   if((data.cardStatements||[]).some(s=>s.supersededBy&&!(data.cardStatements||[]).some(t=>t.id===s.supersededBy&&t.cardId===s.cardId&&t.dueDate>s.dueDate)))return false
   if((data.billCycles||[]).some(c=>!bill(c.billId)||!calendarDate(c.dueDate)||!amount(c.expectedAmount)||(c.actualAmount!=null&&!amount(c.actualAmount))))return false
+  if(new Set((data.billCycles||[]).map(c=>`${c.billId}|${c.dueDate}`)).size!==(data.billCycles||[]).length)return false
   if(data.payments.some(p=>p.statementId&&!(data.cardStatements||[]).some(s=>s.id===p.statementId&&s.cardId===p.cardId)))return false
   if(data.payments.some(p=>p.assignmentStatus!==undefined&&(!['confirmed','unassigned','general','extra'].includes(p.assignmentStatus)||(p.assignmentStatus==='confirmed'&&!p.statementId)||(p.assignmentStatus!=='confirmed'&&Boolean(p.statementId)))))return false
   if((data.billPayments||[]).some(p=>p.cycleId&&!(data.billCycles||[]).some(c=>c.id===p.cycleId&&c.billId===p.billId)))return false
   if((data.adjustments||[]).some(a=>!account(a.accountId)||!number(a.before)||!number(a.after)||!number(a.delta)||!date(a.date)||!a.reason))return false
   if((data.incomeSchedules||[]).some(item=>!item.name||!account(item.accountId)||account(item.accountId).type==='credit'||!amount(item.amount)||Number(item.amount)<=0||!calendarDate(item.nextDate)||!['weekly','biweekly','semimonthly','monthly'].includes(item.frequency)||(item.frequency==='semimonthly'&&(!Number.isInteger(Number(item.secondPayDay))||Number(item.secondPayDay)<1||Number(item.secondPayDay)>31))))return false
   if(data.extra!==undefined&&!amount(data.extra))return false
+  if(data.rollFreedMinimums!==undefined&&typeof data.rollFreedMinimums!=='boolean')return false
   if(data.cashPlan!==undefined&&(!data.cashPlan||typeof data.cashPlan!=='object'||!calendarDate(`${data.cashPlan.month}-01`)||!amount(data.cashPlan.buffer)||!amount(data.cashPlan.essentialsRemaining)))return false
   if(data.dataHealthAcknowledgements!==undefined&&(!Array.isArray(data.dataHealthAcknowledgements)||data.dataHealthAcknowledgements.some(x=>typeof x!=='string'||!x)||new Set(data.dataHealthAcknowledgements).size!==data.dataHealthAcknowledgements.length))return false
+  if(data.completedMonths!==undefined&&(!Array.isArray(data.completedMonths)||data.completedMonths.some(x=>typeof x!=='string'||!calendarDate(`${x}-01`))||new Set(data.completedMonths).size!==data.completedMonths.length))return false
+  if(data.repairHistory!==undefined&&!Array.isArray(data.repairHistory))return false
   return true
 }

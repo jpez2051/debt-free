@@ -135,6 +135,13 @@ input,select,.modal input,.modal select,.spending-controls select{background:var
 .record-history{margin-top:14px;border-top:1px solid var(--theme-border)}
 .record-history>summary{color:var(--theme-text-soft);font-weight:700;min-height:48px}
 .record-history[open]>summary{border-bottom:1px solid var(--theme-border)}
+.zero-card-note{display:block;margin-top:8px;color:var(--theme-text-soft);line-height:1.45}
+.rollover-choice{display:flex;align-items:flex-start;gap:10px;margin-top:18px;color:var(--theme-text);line-height:1.45}
+.rollover-choice input{flex:0 0 auto;width:18px;height:18px;margin-top:2px;accent-color:var(--mint)}
+.coverage-grid>div{display:grid;gap:6px;border:1px solid var(--theme-border);border-radius:10px;padding:10px;color:var(--theme-muted);font-size:11px}
+.coverage-grid>div b{color:var(--theme-text-soft)}
+.coverage-grid>div span{display:block;border:0;padding:0}
+.coverage-grid>div button{justify-self:start;min-height:34px}
 .kicker{font-size:.75rem}
 .stats span,.stats small,.row small,.cycle-meta,.income-schedule-list small{font-size:.75rem}
 @media(max-width:900px){.mobile-primary-nav button{font-size:11px}}

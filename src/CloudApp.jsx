@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Cloud, LogIn, LogOut, Plus, ShieldCheck, Upload } from 'lucide-react'
 import App from './App.jsx'
-import { prepareData } from './lib/finance.js'
+import { prepareData, repairDuplicateBillCycles } from './lib/finance.js'
 import { loadState } from './lib/storage.js'
 import { setActiveData, setCloudSession } from './lib/cloudState.js'
 import { observeUser, readCloudData, signIn, signOutUser, watchCloudData, writeCloudData } from './lib/firebaseClient.js'
@@ -61,8 +61,16 @@ export default function CloudApp() {
       setPhase('loading')
       setCloudSession({ status:'loading', user:signedIn, sync:'Opening your private cloud record…', actions:{ signOut:logout } })
       try {
-        const saved = await readCloudData(signedIn.uid)
-        if (saved) { acceptCloudData(saved,signedIn); setPhase('ready'); startWatching(signedIn) }
+        let saved = await readCloudData(signedIn.uid)
+        if (saved) {
+          const repair=repairDuplicateBillCycles(saved)
+          if(repair.repaired){
+            await writeCloudData(signedIn.uid,repair.data,cloudFingerprint(saved))
+            saved=repair.data
+          }
+          acceptCloudData(saved,signedIn,repair.repaired?`Repaired ${repair.repaired} duplicate bill occurrence${repair.repaired===1?'':'s'} in the cloud`:'Saved in the cloud')
+          setPhase('ready'); startWatching(signedIn)
+        }
         else { setPhase('migration'); setCloudSession({ status:'migration', user:signedIn, sync:hasLegacyRecords ? 'Choose how to begin' : 'Ready for a new workspace', actions:{ signOut:logout, importLocal:importLocalData, startFresh } }) }
       } catch (error) { setMessage(error?.message || 'Your cloud record could not be opened.'); setPhase('error'); setCloudSession({ status:'error', user:signedIn, sync:'Cloud connection needs attention', actions:{ signOut:logout } }) }
     })

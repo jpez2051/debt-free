@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.20 — Financial reliability and honest status
+
+- Repair only the known empty duplicate bill occurrence pattern on cloud sign-in or backup restore, preserving confirmed amounts, payments, balances, and an audit copy of the removed shell. Validate cloud writes and distinguish a recovery copy from a restorable backup.
+- Distinguish a card's zero balance, paid minimum, and future recurring charges instead of labeling an old paid statement as needing confirmation.
+- Exclude zero-balance card minimums from monthly cash commitments and payoff projections by default; offer an explicit option to roll those freed payments forward.
+- Fix the six-month category chart when Other is a leading category, so displayed totals remain accurate.
+- Label forecast cash as before everyday spending, record whether statement amounts were issuer-confirmed or estimated, and let users mark historical months complete before trusting a comparison.
+
 ## v0.11.19 — Clearer, more readable financial workspace
 
 - Use `package.json` as the only release-number source. The app, backups, and cloud record now read it directly; the redundant `VERSION` file and hard-coded UI/README numbers are gone.
