@@ -59,6 +59,9 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Preserve overdue bill occurrences and confirm each invoice's actual amount and due date.
 - Record refunds separately from income, and reconcile balances with an adjustment history.
 - Detect conflicting tabs and visibly flag failed cloud saves with a retry and downloadable backup path.
+- Protect pending saves on the current device, scoped to the signed-in Google account; reopen a protected draft and explicitly resolve conflicting cloud/device copies.
+- Preview balance effects before posting activity, and compare recent account activity before recording a reconciliation adjustment.
+- Upgrade cloud storage explicitly after publishing owner-only split-record rules. See `docs/cloud-storage-upgrade.md`; the website does not silently migrate existing records.
 
 ## Important changes in v0.9.0
 
@@ -91,8 +94,10 @@ Use Node 22 and pnpm 11.19.0. Verification runs unit/workflow and server-render 
 
 For browser regression checks, open `/debt-free/tests/ui/bill-corrections.html` on the local development server. It uses synthetic records and never reads or writes Firebase. Check recording, correction/merge, Undo, and Activity at desktop and phone widths; add `?theme=light` for the light theme. This test page is not part of the production build.
 
+For recovery and product-flow checks, use `/debt-free/tests/ui/product-readiness.html`. It runs the real recovery controller against an isolated in-memory cloud adapter. Test conflict resolution, offline save/retry, preserved recovery copies, balance previews, reconciliation, and phone layouts. The toolbar changes only synthetic data. It does not replace Firebase Rules-engine or actual-device interruption tests.
+
 ## Product direction
 
-Firebase sign-in and sync are active. A future migration from one whole-workspace Firestore document to smaller records is still needed before large-scale use. Full code consolidation and real-device mobile testing also remain. See `release-notes/v0.9.0-qa.md` for the manual usability and mobile checklist; automated rendering is not a substitute for device testing.
+Firebase sign-in and sync are active. An opt-in, verified split-record migration is available after the updated Firestore rules are published. Existing records stay on legacy storage until upgraded. See `docs/cloud-storage-upgrade.md` for deployment, failure behavior, retention limits, and Rules-engine verification requirements. Full legacy-style consolidation, permanent account-erasure backend support, and real-device mobile testing remain. Automated rendering is not a substitute for device testing or a security audit.
 
 See [CHANGELOG.md](CHANGELOG.md) for build history.

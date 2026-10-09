@@ -21,7 +21,7 @@ export const cloudFingerprint = data => stableValue(cloudSafeData(data || {}))
 
 export class CloudConflictError extends Error {
   constructor() {
-    super('Your records changed on another device before this save. Nothing was overwritten. Reload the newer cloud copy before making another change.')
+    super('Your records changed on another device before this save. Nothing was overwritten. Use Review recovery options to compare and preserve both copies before choosing which to use.')
     this.name = 'CloudConflictError'
     this.code = 'cloud/conflict'
   }

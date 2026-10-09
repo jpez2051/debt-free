@@ -3,8 +3,8 @@ import { activityEntries, defaultActivityFilters, filterActivity } from './lib/a
 import './activity.css'
 
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
-export default function ActivityList({data,renderTransaction,onStatements,onBills,onAccounts,onEditBillPayment,onUndoBillPayment}) {
-  const [filters,setFilters]=useState(defaultActivityFilters)
+export default function ActivityList({data,renderTransaction,onStatements,onBills,onAccounts,onEditBillPayment,onUndoBillPayment,initialAccountId=''}) {
+  const [filters,setFilters]=useState(()=>({...defaultActivityFilters(),accountId:initialAccountId}))
   const all=useMemo(()=>activityEntries(data),[data])
   const {entries,error}=filterActivity(all,filters)
   const set=(key,value)=>setFilters(f=>({...f,[key]:value}))

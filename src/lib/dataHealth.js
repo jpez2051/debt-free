@@ -5,11 +5,11 @@ import { validateData } from './backup.js'
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
 const dayDistance=(a,b)=>Math.round(Math.abs(new Date(`${a}T12:00:00`)-new Date(`${b}T12:00:00`))/86400000)
 
-export function analyzeDataHealth(data,now=new Date()){
+export function analyzeDataHealth(data,now=new Date(),{storageFormat=1}={}){
   const today=localDate(now),issues=[],duplicates=new Map()
   if(!validateData(data))issues.push({kind:'integrity',level:'warning',title:'Backup restore check failed',detail:'The current records contain a structural conflict. Download a recovery copy and repair the issue before relying on normal backup restore or cloud saving.'})
   const approximateBytes=new TextEncoder().encode(JSON.stringify(data)).length
-  if(approximateBytes>500000)issues.push({kind:'cloud-size',level:'warning',title:'Cloud workspace is getting large',detail:'Your records are approaching the size where one-document cloud saving can become unreliable. Download a backup; Debt Free needs a split-record storage migration before the workspace grows much more.'})
+  if(storageFormat!==2&&approximateBytes>500000)issues.push({kind:'cloud-size',level:'warning',title:'Cloud workspace is getting large',detail:'This workspace still uses single-document storage. Download a backup, publish the split-record Firestore rules, and use Upgrade cloud storage in Settings before adding substantially more history.'})
   for(const item of data.transactions||[]){
     const key=[item.kind,item.accountId,transactionDay(item),cents(item.amount),String(item.merchant||'').trim().toLocaleLowerCase()].join('|')
     duplicates.set(key,[...(duplicates.get(key)||[]),item])

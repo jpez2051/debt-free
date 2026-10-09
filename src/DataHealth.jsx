@@ -1,9 +1,13 @@
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { analyzeDataHealth } from './lib/dataHealth.js'
 import { localDate } from './lib/finance.js'
+import { useEffect,useState } from 'react'
+import { getCloudSession } from './lib/cloudState.js'
 
 export default function DataHealth({data,update}){
-  const {issues,coverage}=analyzeDataHealth(data),acknowledged=data.dataHealthAcknowledgements||[],active=issues.filter(x=>!x.id||!acknowledged.includes(x.id)),reviewed=issues.filter(x=>x.id&&acknowledged.includes(x.id)),warnings=active.filter(x=>x.level==='warning').length
+  const [,tick]=useState(0)
+  useEffect(()=>{const changed=()=>tick(x=>x+1);window.addEventListener('debt-free-cloud-updated',changed);return()=>window.removeEventListener('debt-free-cloud-updated',changed)},[])
+  const {issues,coverage}=analyzeDataHealth(data,new Date(),{storageFormat:getCloudSession().storageFormat}),acknowledged=data.dataHealthAcknowledgements||[],active=issues.filter(x=>!x.id||!acknowledged.includes(x.id)),reviewed=issues.filter(x=>x.id&&acknowledged.includes(x.id)),warnings=active.filter(x=>x.level==='warning').length
   const acknowledge=issue=>update({...data,dataHealthAcknowledgements:[...new Set([...acknowledged,issue.id])]})
   const restore=issue=>update({...data,dataHealthAcknowledgements:acknowledged.filter(id=>id!==issue.id)})
   const completedMonths=data.completedMonths||[],currentMonth=localDate().slice(0,7)

@@ -2,6 +2,15 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.12.0 — Recovery-first financial workspace
+
+- Protect unsaved changes in an account-scoped device journal before accepting an entry. Recover interrupted saves, guard competing tabs, and show save status across every page.
+- Resolve cloud conflicts with side-by-side complete copies, downloads, an explicit replacement acknowledgement, and preserved recovery copies. Keep recovery copies before backup restore or workspace clear.
+- Add an opt-in, verified split-record cloud migration. Immutable bounded parts are staged and read back before an atomic index switch; unchanged parts are reused. Requires publishing the updated owner-only Firestore rules; existing storage stays active until then.
+- Simplify the dashboard into recorded checking today, payday timing, and a guarded extra-payment estimate. Collapse supporting reporting and payoff panels.
+- Preview actual account balance changes in income, expense, transfer, and card-payment forms. Guide reconciliation through the difference and recent account activity before an explained adjustment.
+- Use in-app confirmations for activity/payment/score/account removal, bill archiving, and duplicate entry warnings. Fix the first-income setup button and mobile quick-add income/transfer buttons passing click events as financial records. Clarify that clearing a workspace is not permanent erasure of backups or retained storage parts.
+
 ## v0.11.22 — Compact, expandable bills
 
 - Show each bill as a compact rounded row with its bill month, due date, account, and paid/due status visible.

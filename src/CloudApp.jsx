@@ -1,162 +1,67 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Cloud, LogIn, LogOut, Plus, ShieldCheck, Upload } from 'lucide-react'
 import App from './App.jsx'
-import { prepareData, repairDuplicateBillCycles } from './lib/finance.js'
+import { prepareData } from './lib/finance.js'
 import { loadState } from './lib/storage.js'
-import { setActiveData, setCloudSession } from './lib/cloudState.js'
-import { observeUser, readCloudData, signIn, signOutUser, watchCloudData, writeCloudData } from './lib/firebaseClient.js'
+import { getActiveData, setActiveData, setCloudSession } from './lib/cloudState.js'
+import { observeUser, readCloudData, signIn, signOutUser, watchCloudData, writeCloudData, migrateCloudStorage, cloudStorageFormat } from './lib/firebaseClient.js'
+import { createCloudWorkspace, recoveryStore } from './lib/cloudRecovery.js'
 import { cloudFingerprint } from './lib/cloudSync.js'
 
-const starter = { accounts:[], transactions:[], payments:[], bills:[], billPayments:[], creditScores:[], strategy:'avalanche', extra:0 }
-
-function CloudScreen({ children }) {
-  return <main className="cloud-screen"><section className="cloud-card"><div className="cloud-mark"><Cloud size={24}/></div>{children}</section></main>
-}
-
-export default function CloudApp() {
-  const localData = useMemo(() => loadState(starter), [])
-  const hasLegacyRecords = useMemo(() => (
-    localData.accounts.length > 0 ||
-    localData.transactions.length > 0 ||
-    localData.payments.length > 0 ||
-    localData.bills.length > 0 ||
-    (localData.billPayments || []).length > 0 ||
-    localData.creditScores.length > 0 ||
-    (localData.incomeSchedules || []).length > 0
-  ), [localData])
-  const [phase, setPhase] = useState('checking')
-  const [user, setUser] = useState(null)
-  const [cloudData, setCloudData] = useState(null)
-  const [message, setMessage] = useState('')
-  const queue = useRef(Promise.resolve())
-  const fingerprint = useRef('')
-  const saving = useRef(0)
-  const pending = useRef(null)
-  const watcher = useRef(() => {})
-  const [workspaceVersion,setWorkspaceVersion]=useState(0)
-
-  const actions=()=>({ signOut:logout, restore:restoreCloudData, reload:reloadCloudData, clear:clearCloudData, retry:retryPendingSave })
-  function acceptCloudData(saved, signedIn, sync='Saved in the cloud') {
-    const ready=prepareData(saved||starter)
-    fingerprint.current=cloudFingerprint(saved||starter)
-    setCloudData(ready); setActiveData(ready); setWorkspaceVersion(x=>x+1)
-    setCloudSession({ status:'ready', user:signedIn, sync, actions:actions() })
-  }
-  async function startWatching(signedIn) {
-    watcher.current?.()
-    const unsubscribe=await watchCloudData(signedIn.uid,(remote,error)=>{
-      if(error){setCloudSession({status:'ready',user:signedIn,sync:pending.current?'Cloud save failed — retry or download a backup before leaving':'Cloud updates need attention',actions:actions()});return}
-      if(!remote||saving.current||pending.current)return
-      const nextFingerprint=cloudFingerprint(remote)
-      if(nextFingerprint===fingerprint.current)return
-      acceptCloudData(remote,signedIn,'Updated from another device')
+const starter={accounts:[],transactions:[],payments:[],bills:[],billPayments:[],creditScores:[],strategy:'avalanche',extra:0}
+function CloudScreen({children}){return <main className="cloud-screen"><section className="cloud-card"><div className="cloud-mark"><Cloud size={24}/></div>{children}</section></main>}
+export default function CloudApp(){
+  const localData=useMemo(()=>loadState(starter),[])
+  const hasLegacyRecords=['accounts','transactions','payments','bills','billPayments','creditScores','incomeSchedules'].some(key=>localData[key]?.length)
+  const [phase,setPhase]=useState('checking'),[user,setUser]=useState(null),[cloudData,setCloudData]=useState(null),[message,setMessage]=useState(''),[workspaceVersion,setWorkspaceVersion]=useState(0)
+  const controller=useRef(null),watcher=useRef(()=>{}),authGeneration=useRef(0),currentUser=useRef(null),saveState=useRef({status:'saved'})
+  const actions=()=>({signOut:logout,restore:restoreCloudData,reload:reloadCloudData,clear:clearCloudData,retry:retryPendingSave,compare:()=>controller.current.compare(),useCloud:useCloudCopy,useLocal:useLocalCopy,upgradeStorage:upgradeStorage,recoveries:()=>recoveryStore(localStorage,currentUser.current.uid).list()})
+  function announce(){const signedIn=currentUser.current;if(!signedIn)return;const state=saveState.current;setCloudSession({status:'ready',user:signedIn,saveStatus:state.status,storageFormat:cloudStorageFormat(signedIn.uid),sync:state.error||({saved:'Saved in the cloud',saving:'Saving…',recovered:'Unsaved changes recovered',conflict:'Cloud conflict — review recovery options',failed:'Cloud save failed — local recovery protected',remote:'Updated from another device'}[state.status]),actions:actions()})}
+  function accept(data){const ready=prepareData(data||starter);setCloudData(ready);setActiveData(ready);setWorkspaceVersion(x=>x+1);window.dispatchEvent(new Event('debt-free-save-recovered'))}
+  async function startWatching(signedIn,generation){
+    watcher.current()
+    const stop=await watchCloudData(signedIn.uid,async(remote,error)=>{
+      if(generation!==authGeneration.current)return
+      if(error){saveState.current={...saveState.current,error:'Cloud updates need attention'};announce();return}
+      if(remote&&!controller.current?.hasPending()&&cloudFingerprint(remote)!==controller.current?.fingerprint){saveState.current={status:'remote-available',error:'New records are available from another device. Reload when you are ready; open forms are not changed.'};announce()}
     })
-    watcher.current=unsubscribe
+    if(generation!==authGeneration.current)stop();else watcher.current=stop
   }
-
-  useEffect(() => {
-    const stop = observeUser(async signedIn => {
-      setUser(signedIn)
-      if (!signedIn) { watcher.current?.(); watcher.current=()=>{}; setPhase('signedOut'); setCloudData(null); setActiveData(null); setCloudSession({ status:'signedOut', user:null, sync:'', actions:{ signIn:login } }); return }
-      setPhase('loading')
-      setCloudSession({ status:'loading', user:signedIn, sync:'Opening your private cloud record…', actions:{ signOut:logout } })
-      try {
-        let saved = await readCloudData(signedIn.uid)
-        if (saved) {
-          const repair=repairDuplicateBillCycles(saved)
-          if(repair.repaired){
-            await writeCloudData(signedIn.uid,repair.data,cloudFingerprint(saved))
-            saved=repair.data
-          }
-          acceptCloudData(saved,signedIn,repair.repaired?`Repaired ${repair.repaired} duplicate bill occurrence${repair.repaired===1?'':'s'} in the cloud`:'Saved in the cloud')
-          setPhase('ready'); startWatching(signedIn)
-        }
-        else { setPhase('migration'); setCloudSession({ status:'migration', user:signedIn, sync:hasLegacyRecords ? 'Choose how to begin' : 'Ready for a new workspace', actions:{ signOut:logout, importLocal:importLocalData, startFresh } }) }
-      } catch (error) { setMessage(error?.message || 'Your cloud record could not be opened.'); setPhase('error'); setCloudSession({ status:'error', user:signedIn, sync:'Cloud connection needs attention', actions:{ signOut:logout } }) }
+  useEffect(()=>{
+    const stop=observeUser(async signedIn=>{
+      const generation=++authGeneration.current
+      watcher.current();controller.current?.close();controller.current=null;currentUser.current=signedIn;setUser(signedIn);setCloudData(null);setActiveData(null);setMessage('')
+      if(!signedIn){setPhase('signedOut');setCloudData(null);setActiveData(null);setCloudSession({status:'signedOut',user:null,sync:'',actions:{signIn:login}});return}
+      setPhase('loading');setCloudSession({status:'loading',user:signedIn,sync:'Opening your private cloud record…',actions:{signOut:logout}})
+      try{
+        const workspace=createCloudWorkspace({uid:signedIn.uid,store:recoveryStore(localStorage,signedIn.uid),readCloud:readCloudData,writeCloud:writeCloudData,onState:state=>{if(generation!==authGeneration.current)return;saveState.current=state;announce()}})
+        controller.current=workspace
+        const saved=await workspace.load()
+        if(generation!==authGeneration.current)return
+        if(saved){accept(saved);setPhase('ready');announce();startWatching(signedIn,generation)}
+        else{setPhase('migration');setCloudSession({status:'migration',user:signedIn,sync:hasLegacyRecords?'Choose how to begin':'Ready for a new workspace',actions:{signOut:logout,importLocal:importLocalData,startFresh}})}
+      }catch(error){if(generation!==authGeneration.current)return;setMessage(error.message||'Your cloud record could not be opened.');setPhase('error');setCloudSession({status:'error',user:signedIn,sync:'Cloud connection needs attention',actions:{signOut:logout}})}
     })
-    return ()=>{stop();watcher.current?.()}
-  }, [])
-  useEffect(()=>{const warn=event=>{if(!pending.current)return;event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[])
-
-  async function login() {
-    setMessage('')
-    try { await signIn() }
-    catch (error) { setMessage(error?.message || 'Google sign-in could not be completed.') }
-  }
-  async function logout() {
-    if(pending.current&&!confirm('The latest changes have not been saved to the cloud. Download a backup in Settings before signing out. Sign out anyway?'))return
-    try { await signOutUser();pending.current=null } catch (error) { setMessage(error?.message || 'Could not sign out right now.') }
-  }
-  async function importLocalData() {
-    setMessage('')
-    try {
-      await writeCloudData(user.uid, localData)
-      acceptCloudData(localData,user); setPhase('ready'); startWatching(user)
-    } catch (error) { setMessage(error?.message || 'Your browser records were not uploaded. Nothing was changed.') }
-  }
-  async function startFresh() {
-    setMessage('')
-    try {
-      const fresh = prepareData(starter)
-      await writeCloudData(user.uid, fresh)
-      acceptCloudData(fresh,user); setPhase('ready'); startWatching(user)
-    } catch (error) { setMessage(error?.message || 'Your new workspace could not be created. Nothing was changed.') }
-  }
-  async function restoreCloudData(incoming) {
-    if (!user) throw new Error('Sign in before restoring a backup.')
-    if(pending.current)throw new Error('The latest changes are unsaved. Retry saving or download a backup before restoring.')
-    await writeCloudData(user.uid, incoming, fingerprint.current)
-    acceptCloudData(incoming,user,'Backup restored to the cloud')
-  }
-  async function reloadCloudData() {
-    if(!user) return
-    if(pending.current)throw new Error('The latest changes are unsaved. Retry saving or download a backup before reloading.')
-    const saved=await readCloudData(user.uid)
-    if(!saved) throw new Error('No cloud workspace was found to reload.')
-    acceptCloudData(saved,user,'Reloaded latest cloud copy')
-  }
-  async function clearCloudData() {
-    if(!user) throw new Error('Sign in before clearing this workspace.')
-    if(pending.current)throw new Error('The latest changes are unsaved. Retry saving or download a backup before clearing.')
-    const fresh=prepareData(starter)
-    await writeCloudData(user.uid,fresh,fingerprint.current)
-    acceptCloudData(fresh,user,'Cloud workspace cleared')
-  }
-  const persist = data => {
-    const snapshot = prepareData(data)
-    pending.current=snapshot
-    setActiveData(snapshot)
-    saving.current+=1
-    setCloudSession({ status:'ready', user, sync:'Saving…', actions:actions() })
-    const save = queue.current.catch(() => {}).then(async () => {
-      await writeCloudData(user.uid, snapshot, fingerprint.current)
-      fingerprint.current=cloudFingerprint(snapshot)
-      if(pending.current===snapshot){pending.current=null;setCloudSession({ status:'ready', user, sync:'Saved in the cloud', actions:actions() })}
-    })
-    queue.current = save
-    return save.then(value=>{saving.current=Math.max(0,saving.current-1);return value}).catch(error => {
-      saving.current=Math.max(0,saving.current-1)
-      setCloudSession({ status:'ready', user, sync:error?.code==='cloud/conflict'?'Cloud conflict — download a backup before reloading':'Cloud save failed — retry or download a backup before leaving', actions:actions() })
-      throw error
-    })
-  }
-  async function retryPendingSave(){
-    if(!pending.current)return
-    const retry=queue.current.catch(()=>{}).then(async()=>{
-      const snapshot=pending.current
-      if(!snapshot)return
-      await writeCloudData(user.uid,snapshot,fingerprint.current)
-      fingerprint.current=cloudFingerprint(snapshot)
-      if(pending.current===snapshot){pending.current=null;setCloudSession({status:'ready',user,sync:'Saved in the cloud',actions:actions()});window.dispatchEvent(new Event('debt-free-save-recovered'))}
-    })
-    queue.current=retry
-    return retry
-  }
-
-  if (phase === 'checking' || phase === 'loading') return <CloudScreen><span className="kicker">DEBT FREE CLOUD</span><h1>Opening your private financial workspace…</h1><p>Checking your secure sign-in and cloud record.</p></CloudScreen>
-  if (phase === 'signedOut') return <CloudScreen><span className="kicker">DEBT FREE CLOUD</span><h1>Your records can follow you.</h1><p>Sign in with Google to use your private cloud workspace on this phone or computer.</p><button className="primary cloud-action" type="button" onClick={login}><LogIn size={17}/> Continue with Google</button>{message&&<div className="backup-message">{message}</div>}<small>Only your signed-in account can open its financial record.</small></CloudScreen>
-  if (phase === 'migration' && hasLegacyRecords) return <CloudScreen><span className="kicker">WELCOME TO DEBT FREE</span><h1>Bring your records along, or start fresh.</h1><p>This browser has existing accounts, activity, bills, payments, or scores. You can copy them to the Google account you just selected, or create a completely blank private workspace instead.</p><div className="cloud-migration-counts"><span>{localData.accounts.length} accounts</span><span>{localData.transactions.length} activity entries</span><span>{localData.payments.length+(localData.billPayments||[]).length} payments</span></div><button className="primary cloud-action" type="button" onClick={importLocalData}><Upload size={17}/> Copy my records to the cloud</button><button className="secondary cloud-action" type="button" onClick={startFresh}><Plus size={17}/> Start with a blank workspace</button><button className="secondary cloud-action" type="button" onClick={logout}><LogOut size={17}/> Use a different Google account</button>{message&&<div className="backup-message">{message}</div>}<small><ShieldCheck size={14}/> Your browser records stay where they are unless you choose to copy them.</small></CloudScreen>
-  if (phase === 'migration') return <CloudScreen><span className="kicker">WELCOME TO DEBT FREE</span><h1>Start your private workspace.</h1><p>There aren’t any local Debt Free records in this browser. Begin with a blank workspace now; you can restore a backup later from Settings if you have one.</p><button className="primary cloud-action" type="button" onClick={startFresh}><Plus size={17}/> Start with a blank workspace</button><button className="secondary cloud-action" type="button" onClick={logout}><LogOut size={17}/> Use a different Google account</button>{message&&<div className="backup-message">{message}</div>}<small><ShieldCheck size={14}/> A blank workspace is created only after you select “Start with a blank workspace.”</small></CloudScreen>
-  if (phase === 'error') return <CloudScreen><span className="kicker">CLOUD CONNECTION</span><h1>We could not open your private record.</h1><p>{message||'Check the Firebase setup, then try again.'}</p><button className="secondary cloud-action" type="button" onClick={logout}><LogOut size={17}/> Sign out</button></CloudScreen>
+    return()=>{authGeneration.current++;stop();watcher.current();controller.current?.close()}
+  },[])
+  useEffect(()=>{const warn=e=>{if(!controller.current?.hasPending())return;e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[])
+  async function login(){setMessage('');try{await signIn()}catch(e){setMessage(e.message||'Google sign-in could not be completed.')}}
+  async function logout(){if(controller.current?.hasPending()&&!confirm('Unsaved changes are protected on this device for this Google account. Download a backup before using a different device. Sign out?'))return;try{await signOutUser()}catch(e){setMessage(e.message)}}
+  async function create(data){const workspace=controller.current;await workspace.save(prepareData(data));if(workspace!==controller.current)return;accept(data);setPhase('ready');startWatching(currentUser.current,authGeneration.current)}
+  async function importLocalData(){setMessage('');try{await create(localData)}catch(e){setMessage(e.message)}}
+  async function startFresh(){setMessage('');try{await create(starter)}catch(e){setMessage(e.message)}}
+  function assertClean(){if(controller.current?.hasPending())throw new Error('Review recovery options before replacing records. Your unsaved copy remains protected.')}
+  async function restoreCloudData(data){assertClean();recoveryStore(localStorage,currentUser.current.uid).archive(getActiveData(),'Cloud copy before backup restore');const workspace=controller.current;await workspace.save(data);if(workspace===controller.current)accept(data)}
+  async function reloadCloudData(){if(controller.current?.hasPending())throw new Error('Use Review recovery options to keep this device’s copy and load the latest cloud.');const workspace=controller.current;const data=await workspace.load();if(workspace===controller.current){accept(data);setPhase('ready');startWatching(currentUser.current,authGeneration.current)}}
+  async function clearCloudData(){assertClean();await restoreCloudData(prepareData(starter))}
+  async function retryPendingSave(){await controller.current.retry();window.dispatchEvent(new Event('debt-free-save-recovered'))}
+  async function useCloudCopy(){const workspace=controller.current;const data=await workspace.useCloud();if(workspace===controller.current)accept(data)}
+  async function useLocalCopy(){const workspace=controller.current;const data=await workspace.useLocal();if(workspace===controller.current)accept(data)}
+  async function upgradeStorage(){assertClean();const signedIn=currentUser.current;await migrateCloudStorage(signedIn.uid,controller.current.fingerprint);announce();return true}
+  const persist=data=>{if(!controller.current)throw new Error('Sign in before saving.');return controller.current.save(data)}
+  if(phase==='checking'||phase==='loading')return <CloudScreen><span className="kicker">DEBT FREE CLOUD</span><h1>Opening your private financial workspace…</h1><p>Checking your secure sign-in and cloud record.</p></CloudScreen>
+  if(phase==='signedOut')return <CloudScreen><span className="kicker">DEBT FREE CLOUD</span><h1>Your records can follow you.</h1><p>Sign in with Google to use your private cloud workspace on this phone or computer.</p><button className="primary cloud-action" onClick={login}><LogIn size={17}/> Continue with Google</button>{message&&<p role="alert">{message}</p>}<small>Your account controls access. Backups and device recovery copies contain sensitive financial records.</small></CloudScreen>
+  if(phase==='migration')return <CloudScreen><span className="kicker">WELCOME TO DEBT FREE</span><h1>{hasLegacyRecords?'Bring your records along, or start fresh.':'Start your private workspace.'}</h1><p>{hasLegacyRecords?'This browser has existing records. Copy them to this Google account or start a blank workspace.':'There aren’t any local Debt Free records in this browser. Start blank, then restore a backup later from Settings if needed.'}</p>{hasLegacyRecords&&<button className="primary cloud-action" onClick={importLocalData}><Upload size={17}/> Copy my records to the cloud</button>}<button className="secondary cloud-action" onClick={startFresh}><Plus size={17}/> Start with a blank workspace</button><button className="secondary cloud-action" onClick={logout}><LogOut size={17}/> Use a different Google account</button>{message&&<p role="alert">{message}</p>}<small><ShieldCheck size={14}/> Existing local records are not removed.</small></CloudScreen>
+  if(phase==='error')return <CloudScreen><h1>We could not open your private record.</h1><p role="alert">{message}</p><button className="secondary" onClick={()=>reloadCloudData().catch(e=>setMessage(e.message))}>Try loading again</button><button className="secondary" onClick={logout}>Sign out</button></CloudScreen>
   return <App key={`${user?.uid}-${workspaceVersion}`} initialData={cloudData||starter} persist={persist}/>
 }

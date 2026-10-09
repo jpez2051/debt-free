@@ -6,10 +6,25 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create, update: if request.auth != null
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'version'])
-        && request.resource.data.data is map
+        && ((request.resource.data.keys().hasOnly(['data', 'updatedAt', 'version'])
+          && request.resource.data.data is map
+          && (!exists(/databases/$(database)/documents/users/$(userId)) || !('storageFormat' in resource.data)))
+          || (request.resource.data.keys().hasOnly(['storageFormat', 'manifest', 'revision', 'previousManifest', 'updatedAt', 'version'])
+            && request.resource.data.storageFormat == 2
+            && request.resource.data.manifest is map
+            && request.resource.data.revision is string))
         && request.resource.data.version is string;
       allow delete: if false;
+      match /records/{recordId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['json'])
+          && request.resource.data.json is string
+          && request.resource.data.json.size() < 200000;
+        allow update: if request.auth != null && request.auth.uid == userId
+          && request.resource.data == resource.data;
+        allow delete: if false;
+      }
     }
   }
 }

@@ -60,7 +60,8 @@ test('a confirmed payday advances the visible schedule to the next unconfirmed d
 test('dashboard reporting controls sit outside the payday panel and above reporting totals',async()=>{
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   const forecast=await readFile(new URL('../src/IncomeForecast.jsx',import.meta.url),'utf8')
-  assert.match(app,/<IncomeForecast data=\{data\} update=\{update\} onConfirmIncome=\{confirmExpectedIncome\} onReviewIncome=\{openIncome\}\/><PeriodPicker value=\{reportPeriod\} onChange=\{setReportPeriod\}\/><section className="stats four">/)
+  const forecastPosition=app.indexOf('<IncomeForecast data={data}'),report=app.indexOf('<details className="dashboard-details">'),picker=app.indexOf('<PeriodPicker value={reportPeriod}',report)
+  assert.ok(forecastPosition>=0&&report>forecastPosition&&picker>report,'reporting controls remain outside the payday forecast')
   assert.doesNotMatch(forecast,/reporting-period-anchor/)
 })
 

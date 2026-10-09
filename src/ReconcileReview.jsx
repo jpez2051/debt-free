@@ -1,0 +1,8 @@
+import { activityEntries } from './lib/activity.js'
+import { cents, dollars } from './lib/finance.js'
+const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
+export default function ReconcileReview({data,accountId,balance,onActivity}){
+  const account=data.accounts.find(a=>a.id===accountId),valid=balance!==''&&Number.isFinite(Number(balance)),difference=valid?dollars(cents(balance)-cents(account?.balance)):null
+  const recent=activityEntries(data).filter(row=>row.accountIds.includes(accountId)).slice(0,12)
+  return <div className="reconcile-preview"><strong>{account?.name}</strong><p>App balance: {money.format(account?.balance||0)}</p><p>Bank balance: {valid?money.format(balance):'Enter it below'}</p><p>Difference: {difference===null?'—':money.format(difference)}</p>{difference===0?<p>Balances match. Saving records that you checked them; no adjustment is needed.</p>:<p>Do not use an adjustment to hide a missing or duplicate expense. It changes the balance, not income or spending reports. Compare the same bank balance—available or posted—consistently.</p>}<details><summary>Review recent activity ({recent.length})</summary><ul className="reconcile-activity">{recent.map(row=><li key={row.id}><strong>{row.title} · {money.format(row.entry.amount??row.entry.delta)}</strong><small>{row.date} · {row.detail}{row.entry.historical?' · Already included':''}</small></li>)}</ul>{!recent.length&&<p>No recorded activity for this account.</p>}<button type="button" className="secondary" onClick={()=>onActivity?.(accountId)}>Open all activity for this account</button></details></div>
+}
