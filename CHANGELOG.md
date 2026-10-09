@@ -2,6 +2,11 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.22 — Compact, expandable bills
+
+- Show each bill as a compact rounded row with its bill month, due date, account, and paid/due status visible.
+- Expand a bill by click, tap, or keyboard to access recording, payment history, invoice amounts, schedule editing, and archive controls. Keep all bills collapsed initially without changing financial calculations or records.
+
 ## v0.11.21 — Bills that are easy to record and correct
 
 - Fix the Bills-page record action passing a month ID where the form expected a record; preselect and clearly show the correct bill month.
