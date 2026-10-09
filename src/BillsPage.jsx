@@ -1,0 +1,34 @@
+import { useState } from 'react'
+import { AccessibleDialog } from './ReliabilityCenter.jsx'
+import { billDisplayCycle, confirmBillCycle, cycleTotals, removeRecurringPayment, transactionDay } from './lib/finance.js'
+import { billBalanceChanges } from './lib/billRecording.js'
+import './bills.css'
+
+const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
+const dateLabel=value=>new Date(`${value}T12:00:00`).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})
+const monthLabel=value=>new Date(`${value}T12:00:00`).toLocaleDateString(undefined,{month:'long',year:'numeric'})
+
+export function BillUndoDialog({data,payment,onConfirm,onClose}){
+  const [error,setError]=useState('')
+  const next=removeRecurringPayment(data,payment.id),changes=billBalanceChanges(data,next),cycle=data.billCycles.find(c=>c.id===payment.cycleId)
+  return <AccessibleDialog title="Undo recorded bill charge" onClose={onClose}><div className="bill-record-form"><p>Remove the {money.format(payment.amount)} entry for {payment.billName}{cycle?` (${monthLabel(cycle.dueDate)})`:''}? This bill month’s paid status will be recalculated.</p><div className="bill-save-preview"><strong>Balance after Undo</strong>{changes.length?changes.map(a=><p key={a.id}>{a.name}: {money.format(a.before)} → {money.format(a.after)}</p>):<p>Your account balances stay the same because this entry was already included.</p>}</div><p>This removes the app’s record. It does not cancel a payment with your bank or subscription provider.</p>{error&&<p role="alert">{error}</p>}<button type="button" className="primary" onClick={()=>{if(onConfirm(next)!==false)onClose();else setError('Could not save. Check the save warning and try again.')}}>Undo this entry</button></div></AccessibleDialog>
+}
+
+export default function BillsPage({data,onAdd,onRecord,onEditBill,onArchive,onEditCharge,onUndo,update,now=new Date()}){
+  const [invoice,setInvoice]=useState(null),[error,setError]=useState('')
+  const renderBill=b=>{
+    const cycle=billDisplayCycle(data,b,now),totals=cycle?cycleTotals(cycle,data.billPayments,now):null,account=data.accounts.find(a=>a.id===b.accountId),credit=account?.type==='credit'
+    const payments=data.billPayments.filter(p=>p.billId===b.id).slice().sort((a,b)=>transactionDay(b).localeCompare(transactionDay(a)))
+    const current=payments.filter(p=>p.cycleId===cycle?.id),paid=totals?.remaining===0
+    return <article className="bill-card" key={b.id}><div className="bill-card-heading"><div><h3>{b.name}</h3><p>{cycle?`${monthLabel(cycle.dueDate)} · Due ${dateLabel(cycle.dueDate)}`:'No bill due date recorded'} · {account?.name||'Choose a payment account'}</p></div><span className={paid?'bill-status paid-label':'bill-status'}>{b.active===false?'Archived':paid?(credit?'Charged':'Paid'):`Due ${money.format(totals?.remaining??b.amount)}`}</span></div>
+      {current.length>0&&<div className="bill-current-payments">{current.map(p=><div className="bill-charge-row" key={p.id}><span>{credit?'Charged':'Paid'} {money.format(p.amount)} on {dateLabel(transactionDay(p))}</span><div className="bill-actions"><button type="button" className="secondary" onClick={()=>onEditCharge(p)}>Edit</button><button type="button" className="secondary" onClick={()=>onUndo(p)}>Undo</button></div></div>)}</div>}
+      <div className="bill-actions">{b.active!==false&&!paid&&<button type="button" className="primary" onClick={()=>onRecord(b,cycle)}>{credit?'Record charge':'Record payment'}</button>}<button type="button" className="secondary" onClick={()=>onEditBill(b)}>Edit schedule</button><button type="button" className="secondary" onClick={()=>onArchive(b)}>{b.active===false?'Archive options':'Archive'}</button></div>
+      <details className="bill-detail-history"><summary>Payment history ({payments.length})</summary>{payments.length?payments.map(p=>{const c=data.billCycles.find(c=>c.id===p.cycleId);return <div className="bill-charge-row" key={p.id}><div><strong>{money.format(p.amount)} · {dateLabel(transactionDay(p))}</strong><small>For {c?monthLabel(c.dueDate):'a month to review'}{c?` · Due ${dateLabel(c.dueDate)}`:''} · {p.bankName}{p.historical?' · Already included in balance':''}</small></div><div className="bill-actions"><button type="button" className="secondary" onClick={()=>onEditCharge(p)}>Edit</button><button type="button" className="secondary" onClick={()=>onUndo(p)}>Undo</button></div></div>}):<p>No recorded payments yet.</p>}</details>
+      <details className="bill-detail-history"><summary>Bill months & invoice amounts</summary><p>{money.format(b.amount)} {b.frequency==='annual'?'annual':'monthly'} estimate · {b.autopay?'Autopay reminder':'Manual payment'}. Recording a payment is what marks a bill paid.</p>{data.billCycles.filter(c=>c.billId===b.id).slice().sort((a,b)=>b.dueDate.localeCompare(a.dueDate)).map(c=>{const t=cycleTotals(c,data.billPayments,now);return <div className="bill-charge-row" key={c.id}><div><strong>{dateLabel(c.dueDate)}</strong><small>{money.format(t.required)} bill total · {money.format(t.actualPaid)} recorded · {t.remaining?`${money.format(t.remaining)} remaining`:'Complete'}</small></div><button type="button" className="secondary" onClick={()=>{setInvoice({id:c.id,amount:c.actualAmount??c.expectedAmount});setError('')}}>Edit invoice total</button></div>})}</details>
+    </article>
+  }
+  const active=data.bills.filter(b=>b.active!==false).slice().sort((a,b)=>(a.dueDay||0)-(b.dueDay||0)),archived=data.bills.filter(b=>b.active===false)
+  return <section className="panel content-panel bills-page"><div className="bill-page-heading"><div><h2>Bills</h2><p>Record each charge once. Paid bills stay visible for their bill month; upcoming dues appear on the Dashboard.</p></div><button type="button" className="primary" onClick={onAdd}>Add bill</button></div>{active.length?active.map(renderBill):<p className="empty">Add a subscription, utility, rent, or another recurring bill.</p>}{archived.length>0&&<details className="bill-archived"><summary>Archived bills ({archived.length})</summary>{archived.map(renderBill)}</details>}
+    {invoice&&<AccessibleDialog title="Edit invoice total" onClose={()=>setInvoice(null)}><form className="bill-record-form" onSubmit={e=>{e.preventDefault();try{if(update(confirmBillCycle(data,invoice.id,invoice.amount,now))!==false)setInvoice(null);else setError('Could not save. Check the save warning.')}catch(e){setError(e.message)}}}><p>This corrects this bill month’s invoice total. Recorded payments and future price estimates stay as entered.</p><label>Full invoice total<input required type="number" inputMode="decimal" min="0" step=".01" value={invoice.amount} onChange={e=>setInvoice({...invoice,amount:e.target.value})}/></label>{error&&<p role="alert">{error}</p>}<button className="primary" type="submit">Save invoice total</button></form></AccessibleDialog>}
+  </section>
+}

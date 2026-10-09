@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.11.21 — Bills that are easy to record and correct
+
+- Fix the Bills-page record action passing a month ID where the form expected a record; preselect and clearly show the correct bill month.
+- Keep payment history, Edit, and Undo with each bill. Hide archived schedules separately and provide direct bill corrections in Activity.
+- Edit a recorded charge's date, amount, funding account, balance inclusion, and bill month in one dialog, including missing historical months.
+- Convert an existing expense or transfer to a bill charge, or merge it with a mistaken recorded bill charge, in one save that reverses the old effects and applies the corrected entry once.
+- Review possible matching expenses, transfers, and bill payments before saving. Preview account balance changes and flag early/late bill-month assignments.
+
 ## v0.11.20 — Financial reliability and honest status
 
 - Repair only the known empty duplicate bill occurrence pattern on cloud sign-in or backup restore, preserving confirmed amounts, payments, balances, and an audit copy of the removed shell. Validate cloud writes and distinguish a recovery copy from a restorable backup.

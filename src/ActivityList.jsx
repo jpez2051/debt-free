@@ -3,7 +3,7 @@ import { activityEntries, defaultActivityFilters, filterActivity } from './lib/a
 import './activity.css'
 
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
-export default function ActivityList({data,renderTransaction,onStatements,onBills,onAccounts}) {
+export default function ActivityList({data,renderTransaction,onStatements,onBills,onAccounts,onEditBillPayment,onUndoBillPayment}) {
   const [filters,setFilters]=useState(defaultActivityFilters)
   const all=useMemo(()=>activityEntries(data),[data])
   const {entries,error}=filterActivity(all,filters)
@@ -22,7 +22,7 @@ export default function ActivityList({data,renderTransaction,onStatements,onBill
     {error&&<p role="alert" className="warning-text">{error}</p>}
     <div className="table-list">{entries.map(row=>row.source==='transaction'?<Fragment key={row.id}>{renderTransaction(row.entry)}</Fragment>:<div className="activity-history-row" key={row.id}>
       <div><strong>{row.title}</strong><small>{new Date(`${row.date}T12:00:00`).toLocaleDateString()} · {row.detail}{row.entry.historical?' · Historical':''}</small>{row.source==='billPayment'&&<small>{row.type==='purchase'?'Recurring card charge':'Bill payment'}</small>}{row.source==='cardPayment'&&<small>{row.entry.assignmentStatus==='confirmed'?`Statement due ${data.cardStatements.find(s=>s.id===row.entry.statementId)?.dueDate||'unknown'}`:row.entry.assignmentStatus==='extra'?'General card payment · no statement':row.entry.assignmentStatus==='general'?'Historical payment · no statement':'Statement not assigned'}</small>}</div>
-      <div className="activity-history-actions"><strong>{row.source==='adjustment'?`${money.format(row.entry.before)} → ${money.format(row.entry.after)}`:money.format(row.entry.amount)}</strong><button type="button" className="secondary" onClick={row.source==='cardPayment'?onStatements:row.source==='billPayment'?onBills:onAccounts}>{row.source==='cardPayment'?'View in Debts':row.source==='billPayment'?'View in Bills':'View in Accounts'}</button></div>
+      <div className="activity-history-actions"><strong>{row.source==='adjustment'?`${money.format(row.entry.before)} → ${money.format(row.entry.after)}`:money.format(row.entry.amount)}</strong>{row.source==='billPayment'&&onEditBillPayment?<div className="bill-actions"><button type="button" className="secondary" onClick={()=>onEditBillPayment(row.entry)}>Edit</button><button type="button" className="secondary" onClick={()=>onUndoBillPayment(row.entry)}>Undo</button></div>:<button type="button" className="secondary" onClick={row.source==='cardPayment'?onStatements:row.source==='billPayment'?onBills:onAccounts}>{row.source==='cardPayment'?'View in Debts':row.source==='billPayment'?'View in Bills':'View in Accounts'}</button>}</div>
     </div>)}</div>
     {!entries.length&&!error&&<p className="empty">{all.length?'No activity matches these filters. Try a wider date range or Reset filters.':'No activity recorded yet. Add an entry to get started.'}</p>}
   </section>

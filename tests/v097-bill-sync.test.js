@@ -1,6 +1,5 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import { prepareData } from '../src/lib/finance.js'
 
 const now=new Date(2026,8,3,12)
@@ -9,5 +8,3 @@ const fixture=()=>({financeVersion:1,accounts:[{id:'card',name:'Card',type:'cred
 test('loading automatically synchronizes an unpaid future occurrence without rewriting history',()=>{const source=fixture(),historical=structuredClone({cycle:source.billCycles[0],payment:source.billPayments[0]}),next=prepareData(source,now);assert.equal(next.billCycles.some(c=>c.id==='stale'),false);const future=next.billCycles.find(c=>c.dueDate==='2026-09-27');assert.equal(future.expectedAmount,20.89);assert.equal(next.bills[0].nextDueDate,'2026-09-27');assert.deepEqual(next.billCycles.find(c=>c.id==='past'),historical.cycle);assert.deepEqual(next.billPayments[0],historical.payment);assert.equal(source.billCycles[1].expectedAmount,17.75)})
 
 test('confirmed or paid future occurrences remain protected from automatic synchronization',()=>{const source=fixture();source.billCycles[1].actualAmount=17.75;const next=prepareData(source,now);assert.ok(next.billCycles.some(c=>c.id==='stale'&&c.actualAmount===17.75));assert.equal(next.billCycles.some(c=>c.dueDate==='2026-09-27'),false)})
-
-test('bill rows clearly label the due amount, bill occurrence difference, and recorded charge date',async()=>{const source=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8'),output=source;assert.match(output,/`Due \$\{money2\.format\(amount\)\}`/);assert.match(output,/This occurrence/);assert.match(output,/recorded=payment/);assert.match(output,/dateLabel\(transactionDay\(payment\)\)/);assert.match(output,/const VERSION=RELEASE_VERSION/)})

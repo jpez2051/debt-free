@@ -34,8 +34,9 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 - Review possible duplicates, schedule mismatches, statement gaps, stale reconciliations, unusual score changes, and historical coverage in Data Health.
 - Confirm intentional duplicate or unusual records, retain that decision in backups, and reopen reviewed findings later.
 - Track recurring-bill payments, partial payments, and remaining obligations.
-- Keep recurring bill entry in one place: mark the current bill paid or charged, then use a collapsed history only for review and corrections.
-- Clearly show the bill occurrence a charge belongs to, support early or late occurrence selection, and update an invoice total when it differs from the estimate.
+- Record a bill payment or charge with its bill month shown clearly. Edit its date, amount, account, balance inclusion, and month, or undo it, beside the bill or directly in Activity.
+- Link an existing expense or transfer to a bill instead of entering a second charge. Correct a mistaken recorded bill and the original Activity entry together, with a balance preview before saving.
+- Review nearby matching expenses, transfers, and bill payments before adding another charge, and update an invoice total when it differs from the estimate.
 - Keep a paid monthly bill visible through the end of its due month, then roll the Bills-page summary to the next month without changing history.
 - Correct a payment assigned to the wrong month even when the missing prior occurrence needs to be created.
 - List checking and other cash accounts first, then arrange credit-card tiles from the smallest open balance to the largest, with paid-off cards last.
@@ -63,11 +64,11 @@ Debt Free is a privacy-first debt payoff planner and progress tracker built to m
 
 v0.9.1 simplifies Upcoming obligations to one row per credit card. Overdue minimums take priority; a completed statement stays visible through its due date. Other unpaid/imported statements are flagged with a link to Debts. This is display-only: no records or cash calculations are changed.
 
-For a subscription price increase, edit the bill's Expected amount for newly generated occurrences. Under Bill occurrences, Confirm actual on the first affected occurrence, then log its payment/charge once. Existing occurrences and historical payments retain their previous amounts. Use the exact billed amount, including tax where applicable.
+For a subscription price increase, edit the bill's Expected amount for future estimates. When recording the affected charge, open “Actual bill total differs from the estimate” and enter the full invoice total. You can also edit that month's invoice total under the bill's “Bill months & invoice amounts.” Older invoices and payments retain their previous amounts. Use the exact billed amount, including tax where applicable.
 
 - Under **Debts → Statements**, confirm imported statement dates/minimums and review payment allocations. Older records did not preserve every statement fact; the app flags those assignments instead of silently guessing they are verified.
 - Add a new statement when your issuer provides it. Extra payments stay on the selected statement. If a new minimum includes past-due minimums, explicitly carry those earlier obligations forward to avoid reserving them twice.
-- Under **Bills → Bill occurrences**, confirm the actual invoice and date. Existing occurrences retain their amounts when a future estimate changes. Autopay does not automatically record a payment.
+- Under **Bills**, record the posted charge once and choose its bill month. If the expense or transfer is already in Activity, use “Use entry already in Activity.” A mistaken existing bill charge can be corrected in the same save. Autopay does not automatically record a payment.
 - **Checking after known dues** is not a spending allowance. It excludes savings, subtracts tracked checking-funded bills and card minimums, and does not know about unlogged groceries or other needs. The optional extra-payment estimate also subtracts the user's current-month essentials and protected buffer. Card-funded subscriptions become debt; they are not separately reserved as cash.
 - New profiles start with **$0 extra** in the payoff plan. Existing choices are preserved. Projections assume no new borrowing or fees and use approximate monthly interest.
 - Use **Accounts → Reconcile balance** for corrections and **Activity → Log refund** for money returned by a merchant. Refund corrections can be made by removing and re-entering the refund.
@@ -87,6 +88,8 @@ pnpm run check
 ```
 
 Use Node 22 and pnpm 11.19.0. Verification runs unit/workflow and server-render tests, release-version checks, and a production Vite build. Dependencies and the package manager are pinned; CI installs the committed lockfile.
+
+For browser regression checks, open `/debt-free/tests/ui/bill-corrections.html` on the local development server. It uses synthetic records and never reads or writes Firebase. Check recording, correction/merge, Undo, and Activity at desktop and phone widths; add `?theme=light` for the light theme. This test page is not part of the production build.
 
 ## Product direction
 

@@ -170,7 +170,7 @@ test('previous saved snapshot and pre-upgrade data are retained',()=>{
 })
 test('final application connects the real workflow functions and zero-extra default',async()=>{
   const output=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
-  assert.match(output,/recordCardPayment\(data,form\)/);assert.match(output,/recordBillPayment\(data,form\)/)
+  assert.match(output,/recordCardPayment\(data,form\)/)
   assert.match(output,/strategy:'avalanche',extra:0/);assert.match(output,/setData\(ready\);setActiveData\(ready\)/)
   assert.match(output,/Cash after dues through/);assert.match(output,/ReliabilityCenter data=/)
   assert.doesNotMatch(output,/nextDueDate:cycleComplete\?/)

@@ -41,12 +41,13 @@ test('long review sections collapse without deleting records or changing balance
   const server=await createServer({server:{middlewareMode:true},appType:'custom'})
   try{
     const {default:ReliabilityCenter}=await server.ssrLoadModule('/src/ReliabilityCenter.jsx')
+    const {default:BillsPage}=await server.ssrLoadModule('/src/BillsPage.jsx')
     const render=page=>renderToStaticMarkup(React.createElement(ReliabilityCenter,{data,update(){throw new Error('Rendering must not save')},page,onPayBill(){}}))
-    const accounts=render('accounts'),bills=render('bills'),debts=render('debts')
+    const accounts=render('accounts'),bills=renderToStaticMarkup(React.createElement(BillsPage,{data})),debts=render('debts')
     assert.match(accounts,/Check balances against your bank/)
     assert.match(accounts,/1 of 2 accounts checked/)
     assert.match(accounts,/Example Checking/)
-    assert.match(bills,/Review occurrences \(1\)/)
+    assert.match(bills,/<details[^>]*><summary>Bill months &amp; invoice amounts/)
     assert.match(bills,/Example Subscription/)
     assert.match(debts,/Review statements \(1\)/)
     assert.match(debts,/Example Card/)
@@ -54,6 +55,5 @@ test('long review sections collapse without deleting records or changing balance
   }finally{await server.close()}
   const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
   assert.match(app,/View recorded payments \(\{data\.payments\.length\}\)/)
-  assert.match(app,/data\.bills\.slice\(\)\.sort/)
   assert.doesNotMatch(app,/data\.bills\.sort/)
 })

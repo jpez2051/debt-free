@@ -8,7 +8,6 @@ test('v0.7.1 protects linked bill records and preserves negative shortfalls',asy
   assert.match(app,/safeToSpend=cashPosition\(data,cashToday\)\.afterKnownDues/)
   assert.match(app,/trackedObligations\(data\)/)
   assert.match(app,/historical payment record\(s\).*Archive it instead/)
-  assert.match(app,/cycleTotals\(cycle,data\.billPayments\)\.remaining/)
   assert.match(app,/saveLedgerTransaction/)
 })
 

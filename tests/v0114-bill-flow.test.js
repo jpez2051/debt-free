@@ -1,6 +1,5 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import { prepareData, recordBillPayment, cycleTotals, reassignPayment, billDisplayCycle } from '../src/lib/finance.js'
 
 const now=new Date(2026,8,21,12)
@@ -34,16 +33,4 @@ test('the Bills page keeps a paid monthly occurrence visible until the next mont
   const bill=paid.bills[0]
   assert.equal(billDisplayCycle(paid,bill,new Date(2026,8,21,12)).dueDate,'2026-09-06')
   assert.equal(billDisplayCycle(paid,bill,new Date(2026,9,1,12)).dueDate,'2026-10-06')
-})
-
-test('Bills has one primary entry flow and keeps corrections in collapsed history',async()=>{
-  const app=await readFile(new URL('../src/App.jsx',import.meta.url),'utf8')
-  assert.match(app,/Mark charged/)
-  assert.match(app,/Mark paid/)
-  assert.match(app,/Charge & payment history/)
-  assert.match(app,/Correct bill occurrence/)
-  assert.match(app,/create missing occurrence/)
-  assert.match(app,/paid monthly bill stays visible through month-end/)
-  assert.match(app,/Change bill month or invoice amount/)
-  assert.match(app,/openBillPayment\(b,obligation\?\.cycleId\)/)
 })

@@ -200,8 +200,16 @@ export function removeCardPayment(source,id,now=new Date()) {
   return data
 }
 export function recordBillPayment(source,form,now=new Date()) {
-  const data=prepareData(source,now),cycle=data.billCycles.find(c=>c.id===form.cycleId),bill=data.bills.find(b=>b.id===cycle?.billId),funding=data.accounts.find(a=>a.id===form.bankId)
-  if(!cycle||!bill||!funding) throw new Error('Choose a bill occurrence and payment account.')
+  const data=prepareData(source,now),funding=data.accounts.find(a=>a.id===form.bankId)
+  let cycle=data.billCycles.find(c=>c.id===form.cycleId)
+  const bill=data.bills.find(b=>b.id===(form.billId||cycle?.billId))
+  if(!bill||!funding) throw new Error('Choose a bill and the account that paid it.')
+  if(form.dueDate){
+    if(!calendarDate(form.dueDate))throw new Error('Choose the month or due date this bill payment belongs to.')
+    cycle=data.billCycles.find(c=>c.billId===bill.id&&c.dueDate===form.dueDate)
+    if(!cycle){cycle={id:crypto.randomUUID(),billId:bill.id,dueDate:form.dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false};data.billCycles.push(cycle)}
+  }
+  if(!cycle||cycle.billId!==bill.id) throw new Error('Choose the month or due date this bill payment belongs to.')
   const value=amount(form.amount),historical=Boolean(form.historical)
   if(form.confirmActual) cycle.actualAmount=amount(form.actualAmount,true)
   const p={id:crypto.randomUUID(),...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
