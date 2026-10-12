@@ -33,8 +33,10 @@ export function validateData(data) {
   if(data.extra!==undefined&&!amount(data.extra))return false
   if(data.rollFreedMinimums!==undefined&&typeof data.rollFreedMinimums!=='boolean')return false
   if(data.cashPlan!==undefined&&(!data.cashPlan||typeof data.cashPlan!=='object'||!calendarDate(`${data.cashPlan.month}-01`)||!amount(data.cashPlan.buffer)||!amount(data.cashPlan.essentialsRemaining)))return false
+  if(data.cashPlan?.reserveMode!==undefined&&(!['next-payday','month-end','custom'].includes(data.cashPlan.reserveMode)||!calendarDate(data.cashPlan.reserveEnd)||!account(data.cashPlan.accountId)||account(data.cashPlan.accountId).type!=='checking'||!data.cashPlan.cardFunding||Object.entries(data.cashPlan.cardFunding).some(([cardId,bankId])=>account(cardId)?.type!=='credit'||account(bankId)?.type!=='checking')))return false
   if(data.dataHealthAcknowledgements!==undefined&&(!Array.isArray(data.dataHealthAcknowledgements)||data.dataHealthAcknowledgements.some(x=>typeof x!=='string'||!x)||new Set(data.dataHealthAcknowledgements).size!==data.dataHealthAcknowledgements.length))return false
   if(data.completedMonths!==undefined&&(!Array.isArray(data.completedMonths)||data.completedMonths.some(x=>typeof x!=='string'||!calendarDate(`${x}-01`))||new Set(data.completedMonths).size!==data.completedMonths.length))return false
   if(data.repairHistory!==undefined&&!Array.isArray(data.repairHistory))return false
+  if(data.changeHistory!==undefined&&(!Array.isArray(data.changeHistory)||data.changeHistory.some(e=>!e.id||!date(e.date)||typeof e.label!=='string'||!Array.isArray(e.balances)||e.balances.some(b=>!number(b.before)||!number(b.after)||!number(b.delta))||!Array.isArray(e.records))))return false
   return true
 }

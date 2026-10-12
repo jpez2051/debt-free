@@ -98,6 +98,8 @@ For recovery and product-flow checks, use `/debt-free/tests/ui/product-readiness
 
 ## Product direction
 
-Firebase sign-in and sync are active. An opt-in, verified split-record migration is available after the updated Firestore rules are published. Existing records stay on legacy storage until upgraded. See `docs/cloud-storage-upgrade.md` for deployment, failure behavior, retention limits, and Rules-engine verification requirements. Full legacy-style consolidation, permanent account-erasure backend support, and real-device mobile testing remain. Automated rendering is not a substitute for device testing or a security audit.
+Firebase sign-in and sync are active. An opt-in, verified split-record migration is available after the updated Firestore rules are published. Existing records stay on legacy storage until upgraded. See `docs/cloud-storage-upgrade.md` for deployment and failure behavior. The privacy functions for account deletion and unused-part retention are built but require separate deployment, Rules verification and an operator gate; see `docs/privacy-backend.md`. The website does not activate billing or perform production deletion. Device retention is manual and excludes pending changes. Actual-device mobile testing and a security audit remain necessary.
+
+The v0.13 reserve plan withholds a displayed extra amount when recorded statement/funding/balance checks need review. It can reserve through the selected checking account's next payday or a custom date, without counting expected income as spendable cash. This is not bank-connected advice. Essentials and buffer require explicit review when the window changes. Activity includes a preview-first expense-only CSV import (historical by default), latest-change Undo, and forward-only change history; historical imports and restore paths never invent a tamper-proof audit.
 
 See [CHANGELOG.md](CHANGELOG.md) for build history.

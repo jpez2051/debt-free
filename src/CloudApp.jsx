@@ -4,7 +4,7 @@ import App from './App.jsx'
 import { prepareData } from './lib/finance.js'
 import { loadState } from './lib/storage.js'
 import { getActiveData, setActiveData, setCloudSession } from './lib/cloudState.js'
-import { observeUser, readCloudData, signIn, signOutUser, watchCloudData, writeCloudData, migrateCloudStorage, cloudStorageFormat } from './lib/firebaseClient.js'
+import { observeUser, readCloudData, signIn, signOutUser, watchCloudData, writeCloudData, migrateCloudStorage, cloudStorageFormat, privacyCapabilities, deleteCloudAccount, cleanupCloudStorage } from './lib/firebaseClient.js'
 import { createCloudWorkspace, recoveryStore } from './lib/cloudRecovery.js'
 import { cloudFingerprint } from './lib/cloudSync.js'
 
@@ -15,7 +15,7 @@ export default function CloudApp(){
   const hasLegacyRecords=['accounts','transactions','payments','bills','billPayments','creditScores','incomeSchedules'].some(key=>localData[key]?.length)
   const [phase,setPhase]=useState('checking'),[user,setUser]=useState(null),[cloudData,setCloudData]=useState(null),[message,setMessage]=useState(''),[workspaceVersion,setWorkspaceVersion]=useState(0)
   const controller=useRef(null),watcher=useRef(()=>{}),authGeneration=useRef(0),currentUser=useRef(null),saveState=useRef({status:'saved'})
-  const actions=()=>({signOut:logout,restore:restoreCloudData,reload:reloadCloudData,clear:clearCloudData,retry:retryPendingSave,compare:()=>controller.current.compare(),useCloud:useCloudCopy,useLocal:useLocalCopy,upgradeStorage:upgradeStorage,recoveries:()=>recoveryStore(localStorage,currentUser.current.uid).list()})
+  const actions=()=>({signOut:logout,restore:restoreCloudData,reload:reloadCloudData,clear:clearCloudData,retry:retryPendingSave,compare:()=>controller.current.compare(),useCloud:useCloudCopy,useLocal:useLocalCopy,upgradeStorage:upgradeStorage,privacyCapabilities,deleteAccount,cleanupStorage:async()=>{assertClean();return cleanupCloudStorage()},removeRecovery,pruneRecoveries,recoveryStats:()=>deviceStore().stats(),recoveries:()=>recoveryStore(localStorage,currentUser.current.uid).list()})
   function announce(){const signedIn=currentUser.current;if(!signedIn)return;const state=saveState.current;setCloudSession({status:'ready',user:signedIn,saveStatus:state.status,storageFormat:cloudStorageFormat(signedIn.uid),sync:state.error||({saved:'Saved in the cloud',saving:'Saving…',recovered:'Unsaved changes recovered',conflict:'Cloud conflict — review recovery options',failed:'Cloud save failed — local recovery protected',remote:'Updated from another device'}[state.status]),actions:actions()})}
   function accept(data){const ready=prepareData(data||starter);setCloudData(ready);setActiveData(ready);setWorkspaceVersion(x=>x+1);window.dispatchEvent(new Event('debt-free-save-recovered'))}
   async function startWatching(signedIn,generation){
@@ -58,6 +58,10 @@ export default function CloudApp(){
   async function useCloudCopy(){const workspace=controller.current;const data=await workspace.useCloud();if(workspace===controller.current)accept(data)}
   async function useLocalCopy(){const workspace=controller.current;const data=await workspace.useLocal();if(workspace===controller.current)accept(data)}
   async function upgradeStorage(){assertClean();const signedIn=currentUser.current;await migrateCloudStorage(signedIn.uid,controller.current.fingerprint);announce();return true}
+  const deviceStore=()=>recoveryStore(localStorage,currentUser.current.uid)
+  function removeRecovery(key){deviceStore().removeArchive(key)}
+  function pruneRecoveries(){return deviceStore().prune()}
+  async function deleteAccount(){assertClean();const uid=currentUser.current.uid,workspace=controller.current;const result=await deleteCloudAccount(uid);if(!result.deleted)throw Error('Deletion was not confirmed.');recoveryStore(localStorage,uid).purge();workspace?.close();if(currentUser.current?.uid===uid){watcher.current();await signOutUser()}return result}
   const persist=data=>{if(!controller.current)throw new Error('Sign in before saving.');return controller.current.save(data)}
   if(phase==='checking'||phase==='loading')return <CloudScreen><span className="kicker">DEBT FREE CLOUD</span><h1>Opening your private financial workspace…</h1><p>Checking your secure sign-in and cloud record.</p></CloudScreen>
   if(phase==='signedOut')return <CloudScreen><span className="kicker">DEBT FREE CLOUD</span><h1>Your records can follow you.</h1><p>Sign in with Google to use your private cloud workspace on this phone or computer.</p><button className="primary cloud-action" onClick={login}><LogIn size={17}/> Continue with Google</button>{message&&<p role="alert">{message}</p>}<small>Your account controls access. Backups and device recovery copies contain sensitive financial records.</small></CloudScreen>

@@ -17,7 +17,7 @@ No active record is switched if the rules are unavailable, staging fails, read-b
 
 Each array (activity, payments, statements, bills, etc.) is divided into bounded JSON parts under `users/{uid}/records/{sha256}`. Settings use bounded parts too. Parts are immutable and content-addressed; unchanged parts are reused. A small parent index selects one complete verified workspace. Publishing the index is a compare-and-set Firestore transaction. A previous index is retained, and old immutable parts are not automatically deleted.
 
-This removes the single-document history ceiling, but is not unlimited storage: a single record or the index can still be too large, total data still loads into browser memory, and retained old parts consume storage. This is not yet a server-side retention or account-erasure service. Clearing the active workspace does not permanently erase retained parts or downloaded/device backups. A permanent-erasure workflow needs explicit backend support before public commercialization.
+This removes the single-document history ceiling, but is not unlimited storage: a single record or the index can still be too large, total data still loads into browser memory, and retained old parts consume storage. The v0.13 privacy backend adds gated unused-part cleanup and account deletion; see `privacy-backend.md` for separate deployment and verification. Clearing the active workspace does not permanently erase retained parts or downloaded/device backups. Device journals still have a browser storage limit; manual recovery-copy pruning can free space but does not make storage unlimited.
 
 ## Verification scope
 

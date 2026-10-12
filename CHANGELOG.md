@@ -2,6 +2,19 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.13.0 — Confidence, reserves, and easier corrections
+
+- Withhold the displayed extra-payment estimate when statements, checking-balance checks or account funding need review. Explain uncertainty beside the estimate.
+- Add next-payday, month-end and custom reserve windows, per-checking-account funding/coverage and explicitly reviewed essentials/buffers. Preserve the existing month-end summary and financial history.
+- Simplify entry forms with expandable balance handling and category help, keep action footers visible on phones, and warn before discarding unfinished entry forms. Add a preview-first expense CSV import with explicit account/sign mapping, duplicate and non-expense review, and historical balance preservation by default.
+- Add Undo for the latest app change and a forward-only change history showing record operations and balance effects. Full backups preserve history; diagnostic exports retain only IDs and amounts in new history.
+- Add explicit device-copy removal and manual retention cleanup without touching pending changes. Build gated server-side permanent account deletion and unused-cloud-part cleanup; requires separately publishing rules, deploying functions and enabling the operator gate. No billing change or production deletion is performed by this release.
+
+## v0.12.1 — Reachable mobile entry actions
+
+- Render entry dialogs outside the clipped mobile page scroller. Keep Save and Cancel in a dedicated footer while only the fields scroll, across expense, income, transfer, card payment, account, and bill forms.
+- Size dialogs to the visual viewport as browser chrome and on-screen keyboards change the usable area; respect safe-area insets, preserve keyboard focus, and make background page controls inert while an entry dialog is open.
+
 ## v0.12.0 — Recovery-first financial workspace
 
 - Protect unsaved changes in an account-scoped device journal before accepting an entry. Recover interrupted saves, guard competing tabs, and show save status across every page.

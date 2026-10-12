@@ -2,26 +2,34 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
+    function activeOwner(userId) {
+      return request.auth != null && request.auth.uid == userId
+        && !exists(/databases/$(database)/documents/privacyDeletion/$(userId));
+    }
+    match /privacyDeletion/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null
-        && request.auth.uid == userId
-        && ((request.resource.data.keys().hasOnly(['data', 'updatedAt', 'version'])
+      allow write: if false;
+    }
+    match /users/{userId} {
+      allow read: if activeOwner(userId);
+      allow create, update: if activeOwner(userId)
+        && (!exists(/databases/$(database)/documents/users/$(userId)) || !('maintenance' in resource.data))
+        && ((request.resource.data.keys().hasOnly(['data', 'updatedAt', 'version', 'maintenanceEpoch'])
           && request.resource.data.data is map
           && (!exists(/databases/$(database)/documents/users/$(userId)) || !('storageFormat' in resource.data)))
-          || (request.resource.data.keys().hasOnly(['storageFormat', 'manifest', 'revision', 'previousManifest', 'updatedAt', 'version'])
+          || (request.resource.data.keys().hasOnly(['storageFormat', 'manifest', 'revision', 'previousManifest', 'updatedAt', 'version', 'maintenanceEpoch'])
             && request.resource.data.storageFormat == 2
             && request.resource.data.manifest is map
             && request.resource.data.revision is string))
         && request.resource.data.version is string;
       allow delete: if false;
       match /records/{recordId} {
-        allow read: if request.auth != null && request.auth.uid == userId;
-        allow create: if request.auth != null && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['json'])
+        allow read: if activeOwner(userId);
+        allow create: if activeOwner(userId)
+          && request.resource.data.keys().hasOnly(['json', 'createdAt'])
           && request.resource.data.json is string
           && request.resource.data.json.size() < 200000;
-        allow update: if request.auth != null && request.auth.uid == userId
+        allow update: if activeOwner(userId)
           && request.resource.data == resource.data;
         allow delete: if false;
       }

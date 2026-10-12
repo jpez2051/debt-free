@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import PaymentAssignments from './PaymentAssignments.jsx'
 import CategoryFields from './CategoryFields.jsx'
 import { localDate, reconcileAccount, recordRefund, repairMovedStatement, saveStatement, statementCycleMismatch, statementTotals, removeStatement, transactionDay } from './lib/finance.js'
@@ -10,7 +11,8 @@ export function AccessibleDialog({title,onClose,children}) {
   const ref=useRef(null),opener=useRef(typeof document==='undefined'?null:document.activeElement)
   useEffect(()=>{ref.current?.querySelector('input,select,button')?.focus();return()=>opener.current?.focus?.()},[])
   const keys=e=>{if(e.key==='Escape'){e.stopPropagation();onClose()}if(e.key==='Tab'){const items=[...ref.current.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')].filter(x=>x.getClientRects().length),first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}}
-  return <div className="reliable-backdrop"><section ref={ref} className="reliable-dialog" role="dialog" aria-modal="true" aria-label={title} onKeyDown={keys}><h2>{title}</h2>{children}<button type="button" className="secondary" onClick={onClose}>Cancel</button></section></div>
+  const dialog=<div className="reliable-backdrop"><section ref={ref} className="reliable-dialog" role="dialog" aria-modal="true" aria-label={title} onKeyDown={keys}><h2>{title}</h2>{children}<button type="button" className="secondary" onClick={onClose}>Cancel</button></section></div>
+  return typeof document==='undefined'?dialog:createPortal(dialog,document.body)
 }
 export default function ReliabilityCenter({data,update,page,onReviewAccount}) {
   const [mode,setMode]=useState(''),[form,setForm]=useState({}),[error,setError]=useState('')

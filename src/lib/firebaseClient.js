@@ -2,6 +2,7 @@ import { RELEASE_VERSION } from '../release.js'
 import { cloudFingerprint, cloudSafeData, CloudConflictError } from './cloudSync.js'
 import { validateData } from './backup.js'
 import { decodeWorkspace, publishSplitWorkspace } from './splitStorage.js'
+import { stageCloudParts } from './stageCloudParts.js'
 
 // Firebase web configuration identifies this public app; Firestore rules protect the private records.
 const firebaseConfig = {
@@ -44,6 +45,9 @@ export async function signIn() {
   }
 }
 export async function signOutUser() { const { auth, authSdk } = await getServices(); return authSdk.signOut(auth) }
+export async function privacyCapabilities(){const {database}=await getServices();const sdk=await import('firebase/functions');try{const result=await sdk.httpsCallable(sdk.getFunctions(database.app,'us-west1'),'privacyCapabilities')({});return result.data}catch{return {accountDeletion:false,cleanup:false}}}
+export async function deleteCloudAccount(expectedUid){const {auth,provider,authSdk,database}=await getServices();if(!auth.currentUser||auth.currentUser.uid!==expectedUid)throw Error('Sign-in changed. Start deletion again.');await authSdk.reauthenticateWithPopup(auth.currentUser,provider);const sdk=await import('firebase/functions');if(auth.currentUser?.uid!==expectedUid)throw Error('Sign-in changed. Nothing was submitted for deletion.');return (await sdk.httpsCallable(sdk.getFunctions(database.app,'us-west1'),'deleteDebtFreeAccount')({confirmation:'DELETE MY DEBT FREE ACCOUNT',expectedUid})).data}
+export async function cleanupCloudStorage(){const {database}=await getServices(),sdk=await import('firebase/functions');return (await sdk.httpsCallable(sdk.getFunctions(database.app,'us-west1'),'cleanupDebtFreeStorage')({confirmation:'REMOVE UNUSED CLOUD PARTS'})).data}
 
 export async function readCloudData(uid) {
   const { database, firestoreSdk } = await getServices()
@@ -56,7 +60,7 @@ async function decodeCloud(uid,record){formats.set(uid,record.storageFormat||1);
 async function writeSplit(uid,data,current,expectedFingerprint){
   const {database,firestoreSdk:sdk}=await getServices(),reference=sdk.doc(database,'users',uid)
   return publishSplitWorkspace({data,current,expectedFingerprint,readPart:id=>readPart(uid,id),writeParts:async parts=>{
-    const entries=[...parts];for(let i=0;i<entries.length;i+=40){const batch=sdk.writeBatch(database);for(const [id,json] of entries.slice(i,i+40))batch.set(sdk.doc(database,'users',uid,'records',id),{json});await batch.commit()}
+    await stageCloudParts(parts,{read:async id=>{const snapshot=await sdk.getDocFromServer(sdk.doc(database,'users',uid,'records',id));return snapshot.exists()?snapshot.data():null},createdAt:()=>sdk.serverTimestamp(),write:async records=>{const batch=sdk.writeBatch(database);for(const [id,value] of records)batch.set(sdk.doc(database,'users',uid,'records',id),value);await batch.commit()}})
   },commit:async(next,expected)=>sdk.runTransaction(database,async transaction=>{
     const latest=await transaction.get(reference),value=latest.exists()?latest.data():null
     if(cloudFingerprint(value||{})!==cloudFingerprint(expected||{}))throw new CloudConflictError()
@@ -76,6 +80,7 @@ export async function writeCloudData(uid, data, expectedFingerprint) {
   const { database, firestoreSdk } = await getServices()
   const reference=firestoreSdk.doc(database, 'users', uid)
   const saved=await firestoreSdk.getDocFromServer(reference)
+  if(saved.data()?.maintenance)throw Error('Cloud storage cleanup is in progress. Your device recovery is protected; retry when cleanup finishes.')
   if(saved.exists()&&saved.data().storageFormat===2){await writeSplit(uid,data,saved.data(),expectedFingerprint);formats.set(uid,2);return}
   await firestoreSdk.runTransaction(database, async transaction => {
     const current=await transaction.get(reference)

@@ -1,31 +1,29 @@
 import { useEffect, useState } from 'react'
-import { saveCashPlan } from './lib/cashPosition.js'
-
+import { cashPosition, saveCashPlan } from './lib/cashPosition.js'
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
-
-export default function CashDecision({data,update,position,children}) {
-  const [buffer,setBuffer]=useState(String(position.buffer))
-  const [essentials,setEssentials]=useState(position.planned?String(position.essentialsRemaining):'')
-  const [error,setError]=useState('')
-  useEffect(()=>{setBuffer(String(position.buffer));setEssentials(position.planned?String(position.essentialsRemaining):'')},[position.month,data.cashPlan])
-  const save=event=>{
-    event.preventDefault()
-    try {
-      const next=saveCashPlan(data,{buffer,essentialsRemaining:essentials},new Date(`${position.today}T12:00:00`))
-      if(update(next)===false)throw new Error('Your plan could not be saved.')
-      setError('')
-    }catch(problem){setError(problem.message)}
-  }
+const date=value=>new Date(`${value}T12:00:00`).toLocaleDateString(undefined,{month:'short',day:'numeric'})
+export default function CashDecision({data,update,position,children,onReviewAccounts,onReviewStatements}){
+  const [form,setForm]=useState({}),[error,setError]=useState('')
+  useEffect(()=>setForm({buffer:String(position.buffer),essentialsRemaining:position.planned?String(position.essentialsRemaining):'',reserveMode:position.reserveMode,reserveEnd:position.reserveEnd,accountId:position.sourceId,cardFunding:data.cashPlan?.cardFunding||{}}),[data.cashPlan,position.month,position.reserveEnd])
+  const banks=data.accounts.filter(a=>a.type==='checking'),cards=data.accounts.filter(a=>a.type==='credit'&&Number(a.balance)>0)
+  const set=(key,value)=>setForm(f=>({...f,[key]:value}))
+  const changeMode=value=>{const preview=cashPosition({...data,cashPlan:{...data.cashPlan,reserveMode:value}},new Date(`${position.today}T12:00:00`));setForm(f=>({...f,reserveMode:value,reserveEnd:preview.reserveEnd}))}
+  const chooseAccount=value=>{const preview=cashPosition({...data,cashPlan:{...data.cashPlan,...form,accountId:value}},new Date(`${position.today}T12:00:00`));setForm(f=>({...f,accountId:value,reserveEnd:preview.reserveEnd}))}
+  const save=event=>{event.preventDefault();try{const next=saveCashPlan(data,form,new Date(`${position.today}T12:00:00`));if(update(next)===false)throw Error('Your plan could not be saved.');setError('')}catch(e){setError(e.message)}}
   return <section className="panel content-panel cash-decision" aria-labelledby="cash-decision-title">
-    <div className="cash-decision-head"><div><span className="kicker">1 · WHAT YOU HAVE NOW</span><h2 id="cash-decision-title">Checking today</h2><p className="muted">Recorded checking balance, not a bank connection. {money.format(position.savings)} in savings stays separate.</p></div><strong className={position.checking<0?'cash-decision-negative':''}>{money.format(position.checking)}</strong></div>
-    <details className="cash-month-breakdown"><summary>Checking after known dues · through {new Date(`${position.monthEnd}T12:00:00`).toLocaleDateString(undefined,{month:'short',day:'numeric'})}: {money.format(position.afterKnownDues)}</summary>
-    <dl className="cash-decision-breakdown"><div><dt>Checking today</dt><dd>{money.format(position.checking)}</dd></div><div><dt>Unpaid card minimums</dt><dd>− {money.format(position.cardMinimums)}</dd></div><div><dt>Unpaid bills from checking</dt><dd>− {money.format(position.cashBills)}</dd></div><div className="cash-decision-total"><dt>After known dues</dt><dd>{money.format(position.afterKnownDues)}</dd></div></dl>
-    {position.overdue>0&&<p className="cash-decision-note">Includes {money.format(position.overdue)} of overdue obligations.</p>}
-    <p className="cash-decision-note">This is not a spending allowance: it excludes future unlogged purchases, missing bills, and any payment due after month-end. {position.savings>0?`${money.format(position.savings)} in savings is not used here.`:''}</p>
-    </details>
+    <div className="cash-decision-head"><div><span className="kicker">1 · WHAT YOU HAVE NOW</span><h2 id="cash-decision-title">Checking today</h2><p className="muted">Recorded checking balance, not a bank connection. {money.format(position.savings)} in savings stays separate.</p></div><strong>{money.format(position.checking)}</strong></div>
+    <details className="cash-month-breakdown"><summary>Checking after known dues · through {date(position.monthEnd)}: {money.format(position.afterKnownDues)}</summary><p>This month-end summary is not a spending allowance. The reserve plan below can include dues after month-end.</p><dl className="cash-decision-breakdown"><div><dt>Checking today</dt><dd>{money.format(position.checking)}</dd></div><div><dt>Unpaid card minimums</dt><dd>− {money.format(position.cardMinimums)}</dd></div><div><dt>Unpaid bills from checking</dt><dd>− {money.format(position.cashBills)}</dd></div><div><dt>After known dues</dt><dd>{money.format(position.afterKnownDues)}</dd></div></dl></details>
     {children}
-    <h3 className="dashboard-stage">3 · Can you pay extra this month?</h3><p className="cash-decision-note">Uses today’s checking minus dues through month-end, remaining essentials, and your protected buffer. Expected paychecks are not counted here.</p>
-    <details className="cash-plan-details"><summary>{position.planned?'Review your buffer and essentials':'Estimate room for an extra debt payment'}</summary><p>Enter what you still expect to spend on groceries, fuel, and other essentials this month, plus a checking balance you want to protect. Update the remaining amount after spending; it does not shrink automatically. Recheck it each month.</p><form onSubmit={save}><label>Essentials remaining this month<input type="number" inputMode="decimal" min="0" step="0.01" required value={essentials} onChange={event=>setEssentials(event.target.value)}/></label><label>Protected checking buffer<input type="number" inputMode="decimal" min="0" step="0.01" required value={buffer} onChange={event=>setBuffer(event.target.value)}/></label><button className="secondary" type="submit">Save cash plan</button></form>{error&&<p role="alert" className="save-error">{error}</p>}</details>
-    {position.planned&&<div className="cash-decision-result"><span>Possible room for extra payment this month</span><strong>{money.format(position.potentialExtra)}</strong><small>Estimate only. Confirm pending transactions and upcoming costs with your bank before paying extra.</small></div>}
+    <h3 className="dashboard-stage">3 · Can you pay extra?</h3><p>Protect known dues and essentials through <strong>{date(position.reserveEnd)}</strong>, including dues on payday. Future paychecks are not counted as available money.</p>
+    <div className={`decision-confidence ${position.safety.ready?'checked':'needs-review'}`} role="status"><strong>{position.safety.label}</strong>{position.safety.reasons.length>0&&<><ul>{position.safety.reasons.map(reason=><li key={reason}>{reason}</li>)}</ul><div className="reliable-actions">{onReviewAccounts&&<button className="secondary" onClick={onReviewAccounts}>Check bank balances</button>}{onReviewStatements&&<button className="secondary" onClick={onReviewStatements}>Review card statements</button>}</div></>}<ul>{position.safety.notes.map(note=><li key={note}>{note}</li>)}</ul></div>
+    <details className="cash-plan-details"><summary>{position.reservePlanned?'Review reserve window and funding':'Set reserve window, essentials & buffer'}</summary><form onSubmit={save}>
+      <label>Reserve window<select value={form.reserveMode||'next-payday'} onChange={e=>changeMode(e.target.value)}><option value="next-payday">Through next recorded payday</option><option value="month-end">Through month-end</option><option value="custom">Choose a date</option></select></label>
+      {form.reserveMode==='next-payday'&&!position.nextPayday&&<p>No checking payday is scheduled in the next 90 days. Month-end is used until you add one, or choose a date.</p>}
+      <label>Protect money through<input type="date" min={position.today} required value={form.reserveEnd||position.reserveEnd} disabled={form.reserveMode!=='custom'} onChange={e=>set('reserveEnd',e.target.value)}/></label>
+      <label>Extra payment and essentials would come from<select required value={form.accountId||''} onChange={e=>chooseAccount(e.target.value)}><option value="">Choose checking account</option>{banks.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+      {banks.length>1&&cards.map(card=><label key={card.id}>{card.name} minimum paid from<select required value={form.cardFunding?.[card.id]||''} onChange={e=>set('cardFunding',{...form.cardFunding,[card.id]:e.target.value})}><option value="">Choose checking account</option>{banks.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>)}
+      <label>Essentials still needed through this date<input type="number" inputMode="decimal" min="0" step=".01" required value={form.essentialsRemaining??''} onChange={e=>set('essentialsRemaining',e.target.value)}/></label><label>Protected buffer in this checking account<input type="number" inputMode="decimal" min="0" step=".01" required value={form.buffer??'0'} onChange={e=>set('buffer',e.target.value)}/></label><p>Essentials do not shrink automatically. Recheck them after spending or whenever the reserve window changes. Other checking accounts are not borrowed from silently.</p><button className="secondary" type="submit">Save cash plan</button></form>{error&&<p role="alert">{error}</p>}</details>
+    <details><summary>Account coverage through {date(position.reserveEnd)}</summary>{position.accountReserves.map(a=><p key={a.id}><strong>{a.name}</strong>: {money.format(a.balance)} − {money.format(a.due)} assigned dues = {money.format(a.afterDues)} before essentials and buffer.</p>)}{position.unassigned>0&&<p>{position.unassigned} obligation(s) have no checking source assigned. No extra-payment estimate is shown.</p>}</details>
+    {position.reserveExtra!==null?<div className="cash-decision-result"><span>Possible extra from {banks.find(a=>a.id===position.sourceId)?.name} through {date(position.reserveEnd)}</span><strong>{money.format(position.reserveExtra)}</strong><small>Estimate only, not a payment recommendation. Verify pending charges, bill estimates and unlogged costs first.</small></div>:<p className="cash-decision-note">{!position.reservePlanned?'Review and save essentials and a buffer for this reserve window before an amount is shown.':'Resolve the review items above before relying on an extra-payment amount.'}</p>}
   </section>
 }
