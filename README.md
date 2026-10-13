@@ -102,4 +102,6 @@ Firebase sign-in and sync are active. An opt-in, verified split-record migration
 
 The v0.13 reserve plan withholds a displayed extra amount when recorded statement/funding/balance checks need review. It can reserve through the selected checking account's next payday or a custom date, without counting expected income as spendable cash. This is not bank-connected advice. Essentials and buffer require explicit review when the window changes. Activity includes a preview-first expense-only CSV import (historical by default), latest-change Undo, and forward-only change history; historical imports and restore paths never invent a tamper-proof audit.
 
+The v0.14 update adds explicit bill-month entry, pending/cleared activity, split categories, imported-category review, account-scoped IndexedDB recovery and major-form drafts. See [Product verification](docs/product-verification.md) for tested behaviors, known limits and the independent usability/actual-device protocol.
+
 See [CHANGELOG.md](CHANGELOG.md) for build history.

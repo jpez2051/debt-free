@@ -2,6 +2,16 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.14.0 — Bill clarity and safer records
+
+- Share one bill/card obligation projection across forecasts and reserves. Preserve missing intervening bill months, include same-day payday dues conservatively, and avoid double-reserving pending repayments.
+- Add Bill/subscription to both Add menus and the expense shortcut. Separate the displayed bill month from its next expected charge, confirm future-month selections, and support month-only skip/waiver and cancellation-effective dates without erasing invoices or history.
+- Add pending/cleared entry status, explicit mark-cleared actions, working cash labels, new-account opening-balance dates, linked expense refunds, exact split categories, and an imported-category review queue. Historical entries remain balance-neutral.
+- Invalidate balance checkpoints and completed spending months after relevant corrections. Harden existing balance-edit protections and distinguish relevant reserve blockers from unrelated informational notes. Explain unreachable payoff projections.
+- Use one mobile action-footer dialog across record editors, protect dirty forms from cloud replacement, and retain account-scoped drafts for major entry editors. Move device journals and acknowledged record caches to IndexedDB with verified legacy-copy migration and explicit offline/protection-failure status.
+- Make change history more specific, label Undo as session-limited, collapse supporting assumptions/schedules, and anonymize bill-exception explanations.
+- Add calculation, correction, recovery, privacy and real-browser IndexedDB regression checks. Server-side privacy activation, a production Rules-engine audit, independent usability tests and actual-phone keyboard interruption tests remain external release gates; this update does not activate billing or delete user cloud records.
+
 ## v0.13.0 — Confidence, reserves, and easier corrections
 
 - Withhold the displayed extra-payment estimate when statements, checking-balance checks or account funding need review. Explain uncertainty beside the estimate.

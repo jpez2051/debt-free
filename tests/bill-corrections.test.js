@@ -43,7 +43,7 @@ test('edit amount and account reverses only the old effect; moving month alone p
   let data=fixture();data.billPayments=[]
   data=saveBillCharge(data,{billId:'bill',dueDate:'2026-10-06',date:'2026-10-09',bankId:'bank',amount:3,historical:false},now)
   const draft=editBillPaymentDraft(data,data.billPayments[0])
-  const moved=saveBillCharge(data,{...draft,dueDate:'2026-11-06'},now)
+  const moved=saveBillCharge(data,{...draft,dueDate:'2026-11-06',confirmFuture:true},now)
   assert.equal(moved.accounts[0].balance,94)
   const changed=saveBillCharge(data,{...draft,bankId:'card',amount:5},now)
   assert.equal(changed.accounts[0].balance,97)

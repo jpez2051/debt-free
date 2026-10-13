@@ -1,0 +1,5 @@
+import CategoryFields from './CategoryFields.jsx'
+export default function SplitFields({splits,onChange}){
+ const field=(index,key,value)=>onChange(splits.map((part,i)=>i===index?{...part,[key]:value}:part))
+ return <details><summary>Split across categories (optional)</summary><p>The parts must add up to the full expense. Only one withdrawal is recorded.</p>{splits.map((part,index)=><section className="entry-preview" key={index}><label>Part {index+1} amount<input required type="number" min=".01" step=".01" value={part.amount||''} onChange={e=>field(index,'amount',e.target.value)}/></label><CategoryFields category={part.category||'Other'} subcategory={part.subcategory||''} onChange={(category,subcategory)=>onChange(splits.map((p,i)=>i===index?{...p,category,subcategory}:p))}/><button className="secondary" type="button" onClick={()=>onChange(splits.filter((_,i)=>i!==index))}>Remove part</button></section>)}<button className="secondary" type="button" disabled={splits.length>=20} onClick={()=>onChange([...splits,{amount:'',category:'Other',subcategory:''}])}>Add category part</button></details>
+}

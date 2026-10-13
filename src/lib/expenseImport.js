@@ -1,4 +1,4 @@
-import { calendarDate, hasDuplicateLedgerTransaction, localDate, saveLedgerTransaction } from './finance.js'
+import { calendarDate, cents, hasDuplicateLedgerTransaction, localDate, saveLedgerTransaction, transactionDay } from './finance.js'
 import { DEFAULT_OTHER_CATEGORY } from './categories.js'
 export function parseCsv(text){
   if(typeof text!=='string'||text.length>2_000_000)throw Error('Choose a CSV smaller than 2 MB.')
@@ -19,10 +19,10 @@ export function previewExpenses(data,csv,{dateColumn,merchantColumn,amountColumn
   return csv.rows.map((row,index)=>{
     const date=importDate(row[dateColumn]),merchant=String(row[merchantColumn]||'').trim(),raw=String(row[amountColumn]||'').trim().replace(/[$,\s]/g,'').replace(/^\((.*)\)$/,'-$1'),number=raw===''?NaN:Number(raw),amount=Math.abs(number)
     let error=!date?'Unsupported date (use YYYY-MM-DD or MM/DD/YYYY)':date>localDate(now)?'Future completed expense':!merchant?'Missing merchant':!Number.isFinite(number)||amount<=0||Math.abs(amount*100-Math.round(amount*100))>.00001?'Invalid dollar amount':sign==='negative'&&number>=0||sign==='positive'&&number<=0?'Not an expense with the selected amount sign':''
-    const form={...DEFAULT_OTHER_CATEGORY,date,merchant,amount,accountId,historical},key=[date,merchant.toLocaleLowerCase(),amount,accountId].join('|'),duplicate=!error&&(seen.has(key)||hasDuplicateLedgerTransaction(data,form,'purchase'))
+    const form={...DEFAULT_OTHER_CATEGORY,date,merchant,amount,accountId,historical,importedExpense:true,categoryReviewed:false},key=[date,merchant.toLocaleLowerCase(),amount,accountId].join('|'),crossMatches=[...(data.billPayments||[]).map(p=>({...p,accountId:p.bankId,source:'bill'})),...(data.payments||[]).map(p=>({...p,accountId:p.bankId,source:'card payment'})),...(data.transactions||[]).filter(t=>t.kind==='transfer').map(t=>({...t,source:'transfer'}))].filter(p=>p.accountId===accountId&&transactionDay(p)===date&&cents(p.amount)===cents(amount)),duplicate=!error&&(seen.has(key)||hasDuplicateLedgerTransaction(data,form,'purchase')||crossMatches.length>0)
     seen.add(key)
     const classificationWarning=/\b(transfer|payment|payroll|deposit)\b/i.test(merchant)
-    return {index,form,error,duplicate,classificationWarning}
+    return {index,form,error,duplicate,classificationWarning,crossMatches}
   })
 }
 export function applyExpenseImport(data,rows,selected,now=new Date()){

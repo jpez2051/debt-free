@@ -1,4 +1,5 @@
 import { categorizeSpendingEntry, TRANSFER_PURPOSES } from './categories.js'
+import { expandSplits, validateSplits } from './splitSpending.js'
 
 // Money is calculated in integer cents; dates identifying obligations are local calendar dates.
 export const cents = value => Math.round(Number(value || 0) * 100)
@@ -19,7 +20,7 @@ export function nextBillDate(date, bill) {
 }
 export const transactionDay = entry => entry.localDate || localDate(new Date(entry.date))
 const sum = entries => dollars(entries.reduce((total,p)=>total+cents(p.amount),0))
-const posted = (p, now) => transactionDay(p) <= localDate(now)
+const posted = (p, now) => p.status!=='pending'&&transactionDay(p) <= localDate(now)
 
 // An older bill workflow could append the same deterministic occurrence twice.
 // Only discard an empty twin when the other copy has the same bill/date/estimate
@@ -97,6 +98,7 @@ export function prepareData(source, now = new Date()) {
     let latest=data.billCycles.filter(c=>c.billId===bill.id).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
     for(let count=0;latest.dueDate<localDate(now)&&count<1200;count++) {
       const dueDate=nextBillDate(latest.dueDate,bill)
+      if(bill.cancelFrom&&dueDate>=bill.cancelFrom)break
       latest={id:`cycle-${bill.id}-${dueDate}`,billId:bill.id,dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false}
       data.billCycles.push(latest)
     }
@@ -115,7 +117,8 @@ export function saveRecurringBill(source,form,now=new Date()){
   if(!form.name?.trim()||cents(form.amount)<=0)throw new Error('Enter a bill name and an amount greater than zero.')
   const data=prepareData(source,now),old=form.id?data.bills.find(b=>b.id===form.id):null,today=localDate(now),requestedDate=form.nextDueDate||today
   if(!calendarDate(requestedDate))throw new Error('Choose a valid next due date.')
-  const item={...old,id:old?.id||crypto.randomUUID(),name:form.name.trim(),amount:dollars(cents(form.amount)),dueDay:new Date(`${requestedDate}T12:00:00`).getDate(),nextDueDate:requestedDate,frequency:form.frequency==='annual'?'annual':'monthly',autopay:Boolean(form.autopay),category:form.category||'Other',subcategory:form.subcategory||'',accountId:form.accountId||'',active:form.active!==false}
+  if(form.cancelFrom&&!calendarDate(form.cancelFrom))throw Error('Choose a valid cancellation-effective date.')
+  const item={...old,id:old?.id||crypto.randomUUID(),name:form.name.trim(),amount:dollars(cents(form.amount)),dueDay:new Date(`${requestedDate}T12:00:00`).getDate(),nextDueDate:requestedDate,frequency:form.frequency==='annual'?'annual':'monthly',autopay:Boolean(form.autopay),category:form.category||'Other',subcategory:form.subcategory||'',accountId:form.accountId||'',active:form.active!==false,scheduleStartDate:old?.scheduleStartDate||requestedDate,cancelFrom:form.cancelFrom||''}
   for(let count=0;item.nextDueDate<today&&count<1200;count++)item.nextDueDate=nextBillDate(item.nextDueDate,item)
   data.bills=old?data.bills.map(b=>b.id===old.id?item:b):[...data.bills,item]
   if(old){
@@ -139,18 +142,18 @@ export function statementTotals(statement, payments, now=new Date()) {
 }
 export function cycleTotals(cycle, payments, now=new Date()) {
   const required=cycle.actualAmount??cycle.expectedAmount,actualPaid=sum(payments.filter(p=>p.cycleId===cycle.id&&posted(p,now)))
-  return {required,actualPaid,paid:actualPaid,remaining:dollars(Math.max(0,cents(required)-cents(actualPaid)))}
+  return {required,actualPaid,paid:actualPaid,remaining:['skipped','waived'].includes(cycle.status)?0:dollars(Math.max(0,cents(required)-cents(actualPaid)))}
 }
 export function trackedObligations(data, now=new Date()) {
   const today=localDate(now),find=id=>data.accounts.find(a=>a.id===id)
   const cards=data.cardStatements.filter(s=>!s.supersededBy).map(s=>{const totals=statementTotals(s,data.payments,now);return {...s,...totals,statementId:s.id,id:`card-${s.id}`,kind:'card',name:`${find(s.cardId)?.name||'Card'} minimum`,dueDate:new Date(`${s.dueDate}T12:00:00`),dateKey:s.dueDate}}).filter(s=>s.remaining>0||s.dateKey>=today||s.needsReview)
-  const bills=data.billCycles.map(c=>{const bill=data.bills.find(b=>b.id===c.billId);return {...c,...cycleTotals(c,data.billPayments,now),cycleId:c.id,id:`bill-${c.id}`,kind:'bill',name:bill?.name||'Bill',active:bill?.active!==false,fundingType:find(bill?.accountId)?.type||'unassigned',accountName:find(bill?.accountId)?.name||'Unassigned',dueDate:new Date(`${c.dueDate}T12:00:00`),dateKey:c.dueDate}}).filter(c=>(c.active||c.dateKey<=today)&&(c.remaining>0||c.dateKey>=today||c.needsReview))
+  const bills=data.billCycles.filter(c=>{const b=data.bills.find(b=>b.id===c.billId);return !b?.cancelFrom||c.dueDate<b.cancelFrom||c.actualAmount!=null||data.billPayments.some(p=>p.cycleId===c.id)}).map(c=>{const bill=data.bills.find(b=>b.id===c.billId);return {...c,...cycleTotals(c,data.billPayments,now),cycleId:c.id,id:`bill-${c.id}`,kind:'bill',name:bill?.name||'Bill',active:bill?.active!==false,fundingType:find(bill?.accountId)?.type||'unassigned',accountName:find(bill?.accountId)?.name||'Unassigned',dueDate:new Date(`${c.dueDate}T12:00:00`),dateKey:c.dueDate}}).filter(c=>(c.active||c.dateKey<=today)&&(c.remaining>0||c.dateKey>=today||c.needsReview))
   return [...cards,...bills].sort((a,b)=>a.dateKey.localeCompare(b.dateKey)||a.name.localeCompare(b.name))
 }
 // The Bills page should reassure someone that this month's bill was handled,
 // while the dashboard remains focused on future unpaid obligations.
 export function billDisplayCycle(data,bill,now=new Date()) {
-  const today=localDate(now),cycles=(data.billCycles||[]).filter(c=>c.billId===bill.id),totals=cycle=>cycleTotals(cycle,data.billPayments||[],now)
+  const today=localDate(now),cycles=(data.billCycles||[]).filter(c=>c.billId===bill.id&&(!bill.cancelFrom||c.dueDate<bill.cancelFrom||c.actualAmount!=null||(data.billPayments||[]).some(p=>p.cycleId===c.id))),totals=cycle=>cycleTotals(cycle,data.billPayments||[],now)
   const overdue=cycles.filter(c=>c.dueDate<today&&totals(c).remaining>0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]
   if(overdue)return overdue
   if(bill.frequency==='monthly'){
@@ -187,15 +190,15 @@ export function recordCardPayment(source, form, now=new Date()) {
   const data=prepareData(source,now),card=data.accounts.find(a=>a.id===form.cardId&&a.type==='credit'),bank=data.accounts.find(a=>a.id===form.bankId&&a.type!=='credit'),statement=data.cardStatements.find(s=>s.id===form.statementId&&s.cardId===form.cardId)
   if(!card||!bank||(form.statementId&&!statement)) throw new Error('Choose a cash account and card, and a statement belonging to that card or leave it for review.')
   const value=amount(form.amount),historical=Boolean(form.historical)
-  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement?.id||'',assignmentStatus:statement?'confirmed':historical?'general':form.paymentIntent==='extra'?'extra':'unassigned',...(statement?{cycleDueDateBefore:statement.dueDate}:{}),cycleAdvanced:false}
-  if(!historical){changeBalance(data,bank.id,-cents(value));changeBalance(data,card.id,-cents(value))}
+  const p={id:crypto.randomUUID(),status:!form.historical&&form.status==='pending'?'pending':'cleared',...dateFields(form.date,now),cardId:card.id,cardName:card.name,bankId:bank.id,bankName:bank.name,amount:value,kind:'payment',historical,statementId:statement?.id||'',assignmentStatus:statement?'confirmed':historical?'general':form.paymentIntent==='extra'?'extra':'unassigned',...(statement?{cycleDueDateBefore:statement.dueDate}:{}),cycleAdvanced:false}
+  if(!historical&&form.status!=='pending'){changeBalance(data,bank.id,-cents(value));changeBalance(data,card.id,-cents(value))}
   data.payments.unshift(p)
   return data
 }
 export function removeCardPayment(source,id,now=new Date()) {
   const data=prepareData(source,now),p=data.payments.find(p=>p.id===id)
   if(!p) throw new Error('Payment not found.')
-  if(!p.historical){changeBalance(data,p.bankId,cents(p.amount));changeBalance(data,p.cardId,cents(p.amount))}
+  if(!p.historical&&p.status!=='pending'){changeBalance(data,p.bankId,cents(p.amount));changeBalance(data,p.cardId,cents(p.amount))}
   data.payments=data.payments.filter(p=>p.id!==id)
   return data
 }
@@ -210,10 +213,11 @@ export function recordBillPayment(source,form,now=new Date()) {
     if(!cycle){cycle={id:crypto.randomUUID(),billId:bill.id,dueDate:form.dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false};data.billCycles.push(cycle)}
   }
   if(!cycle||cycle.billId!==bill.id) throw new Error('Choose the month or due date this bill payment belongs to.')
+  if(['skipped','waived'].includes(cycle.status))throw new Error('This bill month is skipped or waived. Remove that exception before recording a payment.')
   const value=amount(form.amount),historical=Boolean(form.historical)
   if(form.confirmActual) cycle.actualAmount=amount(form.actualAmount,true)
-  const p={id:crypto.randomUUID(),...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
-  if(!historical) changeBalance(data,funding.id,(funding.type==='credit'?1:-1)*cents(value))
+  const p={id:crypto.randomUUID(),status:!form.historical&&form.status==='pending'?'pending':'cleared',...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
+  if(!historical&&form.status!=='pending') changeBalance(data,funding.id,(funding.type==='credit'?1:-1)*cents(value))
   data.billPayments.unshift(p)
   return data
 }
@@ -292,14 +296,15 @@ export function reconcileAccount(source,form,now=new Date()) {
     data.adjustments.unshift({id:crypto.randomUUID(),accountId:a.id,before:a.balance,after:dollars(cents(balance)),delta:dollars(delta),reason:form.reason.trim(),date:now.toISOString()})
     changeBalance(data,a.id,delta)
   }
-  data.accounts=data.accounts.map(x=>x.id===a.id?{...x,reconciledAt:now.toISOString()}:x)
+  data.accounts=data.accounts.map(x=>x.id===a.id?{...x,reconciledAt:now.toISOString(),reconciliationNeedsReview:false}:x)
   return data
 }
 export function recordRefund(source,form,now=new Date()) {
   const data=prepareData(source,now),a=data.accounts.find(a=>a.id===form.accountId),value=amount(form.amount)
   if(!a||!form.merchant?.trim()) throw new Error('Choose an account and enter the merchant.')
-  data.transactions.unshift({id:crypto.randomUUID(),...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',subcategory:form.subcategory||'',amount:value,historical:Boolean(form.historical)})
-  if(!form.historical) changeBalance(data,a.id,(a.type==='credit'?-1:1)*cents(value))
+  if(form.originalTransactionId){const original=data.transactions.find(t=>t.id===form.originalTransactionId&&t.kind==='purchase'&&t.accountId===a.id);if(!original)throw Error('Choose an original expense on the same account.');const refunded=data.transactions.filter(t=>t.kind==='refund'&&t.originalTransactionId===original.id).reduce((sum,t)=>sum+cents(t.amount),0);if(refunded+cents(value)>cents(original.amount))throw Error('Linked refunds cannot exceed the original expense.');if(form.date<transactionDay(original))throw Error('A refund cannot arrive before its original expense.')}
+  data.transactions.unshift({id:crypto.randomUUID(),status:!form.historical&&form.status==='pending'?'pending':'cleared',originalTransactionId:form.originalTransactionId||'',...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',subcategory:form.subcategory||'',amount:value,historical:Boolean(form.historical)})
+  if(!form.historical&&form.status!=='pending') changeBalance(data,a.id,(a.type==='credit'?-1:1)*cents(value))
   return data
 }
 
@@ -318,6 +323,7 @@ export function incomeLinkAheadOfDeposit(scheduledDate,depositDate){
 export function saveLedgerTransaction(source,form,kind,now=new Date()) {
   const data=prepareData(source,now),account=data.accounts.find(a=>a.id===form.accountId),destination=kind==='transfer'&&form.toAccountId?data.accounts.find(a=>a.id===form.toAccountId):null,value=amount(form.amount),old=data.transactions.find(t=>t.id===form.id)
   if(!account)throw new Error('Choose an account.')
+  if(old){const refunds=data.transactions.filter(t=>t.kind==='refund'&&t.originalTransactionId===old.id);if(refunds.length&&(kind!=='purchase'||refunds.some(t=>t.accountId!==account.id||transactionDay(t)<form.date)||refunds.reduce((sum,t)=>sum+cents(t.amount),0)>cents(value)))throw Error('This edit conflicts with linked refunds. Keep their account, date order and original amount valid.')}
   if(['income','transfer'].includes(kind)&&account.type==='credit')throw new Error('Choose a cash account for income or external transfers.')
   if(kind==='transfer'&&form.toAccountId&&!destination)throw new Error('Choose a valid tracked destination account or an outside destination.')
   if(destination&&(destination.type==='credit'||destination.id===account.id))throw new Error('Choose a different cash account as the transfer destination.')
@@ -326,28 +332,29 @@ export function saveLedgerTransaction(source,form,kind,now=new Date()) {
   const incomeSchedule=kind==='income'&&form.incomeScheduleId?data.incomeSchedules.find(item=>item.id===form.incomeScheduleId):null
   if(kind==='income'&&form.incomeScheduleId&&(!incomeSchedule||!calendarDate(form.scheduledIncomeDate)))throw new Error('Choose a valid expected deposit to match this income.')
   if(incomeSchedule&&incomeLinkAheadOfDeposit(form.scheduledIncomeDate,form.date))throw new Error('This deposit is more than a week before the expected payday. Check the date or unlink the expected deposit so a future paycheck is not marked received.')
-  if(old&&!old.historical)applyTransactionBalances(data,old,-1)
+  if(old&&!old.historical&&old.status!=='pending')applyTransactionBalances(data,old,-1)
   const merchant=kind==='transfer'?(destination?.name||form.merchant).trim():(form.merchant||({income:'Income',purchase:'Expense',refund:'Refund'}[kind])).trim()
-  const item={id:old?.id||crypto.randomUUID(),...dateFields(form.date,now),kind,accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{}),...(incomeSchedule?{incomeScheduleId:incomeSchedule.id,scheduledIncomeDate:form.scheduledIncomeDate}:{})}
-  if(!item.historical)applyTransactionBalances(data,item)
+  const item={...old,id:old?.id||crypto.randomUUID(),initiatedDate:form.initiatedDate||old?.initiatedDate||'',incomeScheduleId:'',scheduledIncomeDate:'',...dateFields(form.date,now),kind,status:!form.historical&&form.status==='pending'?'pending':'cleared',importedExpense:Boolean(form.importedExpense),categoryReviewed:form.categoryReviewed===true,splits:validateSplits(form.splits,value),accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{}),...(incomeSchedule?{incomeScheduleId:incomeSchedule.id,scheduledIncomeDate:form.scheduledIncomeDate}:{})}
+  if(!item.historical&&item.status!=='pending')applyTransactionBalances(data,item)
   data.transactions=old?data.transactions.map(t=>t.id===old.id?item:t):[item,...data.transactions]
   return data
 }
 export function removeLedgerTransaction(source,id,now=new Date()) {
   const data=prepareData(source,now),old=data.transactions.find(t=>t.id===id)
   if(!old)throw new Error('Entry not found.')
-  if(!old.historical)applyTransactionBalances(data,old,-1)
+  if(data.transactions.some(t=>t.kind==='refund'&&t.originalTransactionId===id))throw Error('Remove the linked refunds before removing their original expense. Their history must remain connected.')
+  if(!old.historical&&old.status!=='pending')applyTransactionBalances(data,old,-1)
   data.transactions=data.transactions.filter(t=>t.id!==id)
   return data
 }
 export function removeRecurringPayment(source,id,now=new Date()) {
   const data=prepareData(source,now),p=data.billPayments.find(p=>p.id===id)
   if(!p)throw new Error('Entry not found.')
-  if(!p.historical){const a=data.accounts.find(a=>a.id===p.bankId);changeBalance(data,a.id,(a.type==='credit'?-1:1)*cents(p.amount))}
+  if(!p.historical&&p.status!=='pending'){const a=data.accounts.find(a=>a.id===p.bankId);changeBalance(data,a.id,(a.type==='credit'?-1:1)*cents(p.amount))}
   data.billPayments=data.billPayments.filter(p=>p.id!==id)
   return data
 }
 
 export function netSpendingEntries(data) {
-  return [...data.transactions.filter(t=>t.kind==='purchase'||t.kind==='refund').map(t=>categorizeSpendingEntry({...t,amount:t.kind==='refund'?-Number(t.amount):Number(t.amount)})),...data.billPayments.map(p=>categorizeSpendingEntry({...p,merchant:p.billName,category:p.category||'Other',subcategory:p.subcategory||'',accountId:p.bankId,kind:'purchase'}))]
+  return [...data.transactions.filter(t=>t.status!=='pending'&&(t.kind==='purchase'||t.kind==='refund')).flatMap(t=>expandSplits(categorizeSpendingEntry({...t,amount:t.kind==='refund'?-Number(t.amount):Number(t.amount)}))),...data.billPayments.filter(p=>p.status!=='pending').map(p=>categorizeSpendingEntry({...p,merchant:p.billName,category:p.category||'Other',subcategory:p.subcategory||'',accountId:p.bankId,kind:'purchase'}))]
 }

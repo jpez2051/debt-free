@@ -28,6 +28,7 @@ export function anonymizeDiagnosticData(source){
   data.transactions=(data.transactions||[]).map(item=>({...item,merchant:item.kind==='income'?nextIncome(item.merchant):item.toAccountId?accountNames.get(item.toAccountId)||'Cash Account unknown':nextMerchant(item.merchant)}))
   data.payments=(data.payments||[]).map(item=>({...item,cardName:accountNames.get(item.cardId)||'Credit Card unknown',bankName:accountNames.get(item.bankId)||'Cash Account unknown'}))
   data.billPayments=(data.billPayments||[]).map(item=>({...item,billName:billNames.get(item.billId)||'Recurring Bill unknown',bankName:accountNames.get(item.bankId)||'Account unknown'}))
+  data.billCycles=(data.billCycles||[]).map(item=>({...item,...(item.exceptionReason?{exceptionReason:nextReason(item.exceptionReason)}:{})}))
   data.adjustments=(data.adjustments||[]).map(item=>({...item,reason:nextReason(item.reason)}))
   return data
 }

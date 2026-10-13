@@ -1,4 +1,6 @@
 import { calendarDate, cents, dollars, localDate, trackedObligations, transactionDay } from './finance.js'
+import { checkingObligations } from './obligationProjection.js'
+import { accountBalances } from './accountBalances.js'
 
 export const INCOME_FREQUENCIES = [
   ['weekly','Weekly'],
@@ -45,13 +47,13 @@ export function scheduleOccurrences(schedule,{from=new Date(),days=30}={}){
 }
 
 export function expectedIncomeOccurrences(data,now=new Date(),days=30){
-  const recorded=new Set((data.transactions||[]).filter(t=>t.kind==='income'&&t.incomeScheduleId&&calendarDate(t.scheduledIncomeDate)).map(t=>`${t.incomeScheduleId}|${t.scheduledIncomeDate}`))
+  const recorded=new Set((data.transactions||[]).filter(t=>t.status!=='pending'&&t.kind==='income'&&t.incomeScheduleId&&calendarDate(t.scheduledIncomeDate)).map(t=>`${t.incomeScheduleId}|${t.scheduledIncomeDate}`))
   return (data.incomeSchedules||[]).flatMap(schedule=>scheduleOccurrences(schedule,{from:now,days})).filter(item=>!recorded.has(`${item.scheduleId}|${item.date}`)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
 }
 
 export function readyIncomeOccurrences(data,now=new Date()){
   const today=localDate(now),lookback=addDays(today,-40)
-  const recorded=new Set((data.transactions||[]).filter(t=>t.kind==='income'&&t.incomeScheduleId&&calendarDate(t.scheduledIncomeDate)).map(t=>`${t.incomeScheduleId}|${t.scheduledIncomeDate}`))
+  const recorded=new Set((data.transactions||[]).filter(t=>t.status!=='pending'&&t.kind==='income'&&t.incomeScheduleId&&calendarDate(t.scheduledIncomeDate)).map(t=>`${t.incomeScheduleId}|${t.scheduledIncomeDate}`))
   return (data.incomeSchedules||[]).map(schedule=>scheduleOccurrences(schedule,{from:atNoon(lookback),days:40}).filter(item=>item.date<=today).at(-1)).filter(item=>item&&!recorded.has(`${item.scheduleId}|${item.date}`)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
 }
 
@@ -80,15 +82,15 @@ export function setIncomeScheduleActive(source,id,active){
 }
 
 export function cashFlowForecast(data,now=new Date(),days=30){
-  const today=localDate(now),end=addDays(today,days),cashCents=(data.accounts||[]).filter(a=>a.type==='checking').reduce((total,a)=>total+cents(a.balance),0)
+  const today=localDate(now),end=addDays(today,days),cashCents=(data.accounts||[]).filter(a=>a.type==='checking').reduce((total,a)=>total+cents(accountBalances(data,a.id).working),0)
   const income=expectedIncomeOccurrences(data,now,days).filter(item=>(data.accounts||[]).find(account=>account.id===item.accountId)?.type==='checking'),nextIncome=income[0]||null
-  const obligations=trackedObligations(data,now).filter(item=>item.remaining>0&&item.dateKey<=end&&(item.kind==='card'||(item.fundingType!=='credit'&&item.fundingType!=='savings')))
-  const beforeNext=nextIncome?obligations.filter(item=>item.dateKey<nextIncome.date):obligations
+  const obligations=checkingObligations(data,now,end)
+  const beforeNext=nextIncome?obligations.filter(item=>item.dateKey<=nextIncome.date):obligations
   const dueBeforeIncomeCents=beforeNext.reduce((total,item)=>total+cents(item.remaining),0)
   const obligationsCents=obligations.reduce((total,item)=>total+cents(item.remaining),0)
   const expectedIncomeCents=income.reduce((total,item)=>total+cents(item.amount),0)
   return {
-    today,end,days,currentCash:dollars(cashCents),income,nextIncome,obligations,beforeNext,
+    today,end,days,currentCash:dollars(cashCents),income,nextIncome,obligations,beforeNext,sameDay:nextIncome?obligations.some(item=>item.dateKey===nextIncome.date):false,
     dueBeforeIncome:dollars(dueBeforeIncomeCents),coverageBeforeIncome:dollars(cashCents-dueBeforeIncomeCents),
     expectedIncome:dollars(expectedIncomeCents),obligationsDue:dollars(obligationsCents),
     projectedCash:dollars(cashCents+expectedIncomeCents-obligationsCents),

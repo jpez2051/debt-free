@@ -19,34 +19,35 @@ export function recoveryStore(storage,uid){
 export function createCloudWorkspace({uid,store,readCloud,writeCloud,onState=()=>{}}){
   let base='',pending=null,remote=null,queue=Promise.resolve(),saving=0,closed=false
   const emit=(status,error='')=>{if(!closed)onState({status,error,pending:pending?.data||null,saving:saving>0})}
-  const clearSaved=snapshot=>{base=cloudFingerprint(snapshot);if(pending?.data===snapshot){store.clear(snapshot);pending=null}else if(pending){pending={...pending,baseFingerprint:base};store.write(pending)}}
+  const clearSaved=async snapshot=>{base=cloudFingerprint(snapshot);await store.cache?.(snapshot);if(pending?.data===snapshot){await store.clear(snapshot);pending=null}else if(pending){pending={...pending,baseFingerprint:base};await store.write(pending)}}
   async function load(){
-    pending=store.read()
-    try{remote=await readCloud(uid)}catch(error){if(!pending)throw error;base=pending.baseFingerprint;emit('failed',`Could not reach cloud. Unsaved changes recovered: ${error.message}`);return pending.data}
+    pending=await store.read()
+    try{remote=await readCloud(uid)}catch(error){if(!pending){const cached=await store.cached?.();if(!cached?.data)throw error;base=cloudFingerprint(cached.data);emit('offline',`Offline copy last saved ${cached.updatedAt}`);return cached.data}base=pending.baseFingerprint;emit('failed',`Could not reach cloud. Unsaved changes recovered: ${error.message}`);return pending.data}
     base=cloudFingerprint(remote||{})
-    if(pending&&cloudFingerprint(pending.data)===base){store.clear(pending.data);pending=null}
+    if(pending&&cloudFingerprint(pending.data)===base){await store.clear(pending.data);pending=null}
     if(pending){base=pending.baseFingerprint;emit(cloudFingerprint(remote||{})===base?'recovered':'conflict');return pending.data}
-    emit('saved');return remote
+    if(remote)await store.cache?.(remote);emit('saved');return remote
   }
   function save(data){
     if(closed)throw new Error('This workspace is no longer active.')
     if(!validateData(data))throw new Error('Records need a data-integrity review before saving.')
     const snapshot=cloudSafeData(data)
-    const draft={data:snapshot,baseFingerprint:base};store.write(draft);pending=draft
-    saving++;emit('saving')
-    const task=queue.catch(()=>{}).then(async()=>{if(closed)throw new Error('Sign-in changed before this save. The recovery copy is protected.');await writeCloud(uid,snapshot,base);clearSaved(snapshot)})
+    const draft={data:snapshot,baseFingerprint:base};const protection=store.write(draft);let protectedCopy=false;const protectedWrite=Promise.resolve(protection).then(()=>{protectedCopy=true});protectedWrite.catch(()=>{});pending=draft
+    saving++;emit('protecting')
+    const task=queue.catch(()=>{}).then(async()=>{await protectedWrite;emit('saving');if(closed)throw new Error('Sign-in changed before this save. The recovery copy is protected.');await writeCloud(uid,snapshot,base);await clearSaved(snapshot)})
     queue=task
-    return task.then(()=>{saving--;emit(pending?'recovered':'saved')}).catch(error=>{saving--;emit(error.code==='cloud/conflict'?'conflict':'failed',error.message);throw error})
+    const result=task.then(()=>{saving--;emit(pending?'recovered':'saved')}).catch(error=>{saving--;emit(!protectedCopy?'protection-failed':error.code==='cloud/conflict'?'conflict':'failed',error.message);throw error})
+    result.protected=protectedWrite;return result
   }
   async function compare(){await queue.catch(()=>{});remote=await readCloud(uid);if(!remote)throw new Error('No cloud workspace was found. The local recovery copy is still protected.');return {local:pending?.data,remote}}
   async function useCloud(){
     const {local,remote:latest}=await compare()
-    if(local)store.archive(local,'Unsaved copy kept before loading cloud')
-    store.clear(local);pending=null;base=cloudFingerprint(latest);emit('saved');return latest
+    if(local)await store.archive(local,'Unsaved copy kept before loading cloud')
+    await store.clear(local);await store.cache?.(latest);pending=null;base=cloudFingerprint(latest);emit('saved');return latest
   }
   async function useLocal(){
     const {local,remote:latest}=await compare();if(!local)return latest
-    store.archive(latest,'Cloud copy kept before explicit replacement')
+    await store.archive(latest,'Cloud copy kept before explicit replacement')
     base=cloudFingerprint(latest);await save(local);return local
   }
   async function acceptRemote(data){
@@ -55,5 +56,5 @@ export function createCloudWorkspace({uid,store,readCloud,writeCloud,onState=()=
     if(changed){remote=data;base=cloudFingerprint(data);emit('remote')}
     return changed
   }
-  return {load,save,compare,useCloud,useLocal,acceptRemote,retry:()=>pending?save(pending.data):Promise.resolve(),hasPending:()=>Boolean(pending),close:()=>{closed=true},get fingerprint(){return base}}
+  return {load,save,compare,useCloud,useLocal,acceptRemote,retry:()=>pending?save(pending.data):Promise.resolve(),hasPending:()=>Boolean(pending),close:()=>{closed=true},get pendingData(){return pending?.data||null},get fingerprint(){return base}}
 }

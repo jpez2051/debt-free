@@ -12,9 +12,15 @@ export function validateData(data) {
   const number=x=>typeof x!=='boolean'&&x!==null&&x!==''&&Number.isFinite(Number(x))
   const amount=x=>number(x)&&Number(x)>=0
   const date=x=>typeof x==='string'&&!Number.isNaN(new Date(x).getTime())
+  for(const key of ['transactions','payments','billPayments'])if((data[key]||[]).some(item=>item.status!==undefined&&!['pending','cleared'].includes(item.status)))return false
+  if(data.accounts.some(a=>a.openingDate&&!calendarDate(a.openingDate)||a.openingBalance!==undefined&&!number(a.openingBalance)))return false
+  if(data.transactions.some(t=>t.splits!==undefined&&(!Array.isArray(t.splits)||t.splits.length>20||t.splits.some(s=>!s||typeof s.category!=='string'||!s.category||!amount(s.amount)||Number(s.amount)<=0)||t.splits.length&&Math.round(Number(t.amount)*100)!==t.splits.reduce((sum,s)=>sum+Math.round(Number(s.amount)*100),0))))return false
+  if((data.billCycles||[]).some(c=>c.status!==undefined&&!['normal','skipped','waived'].includes(c.status)))return false
+  if(data.bills.some(b=>b.cancelFrom&&!calendarDate(b.cancelFrom)))return false
   const account=id=>data.accounts.find(a=>a.id===id),bill=id=>data.bills.find(b=>b.id===id),incomeSchedule=id=>(data.incomeSchedules||[]).find(item=>item.id===id)
   if(data.accounts.some(a=>!a.name||!number(a.balance)||(a.type!==undefined&&!['checking','savings','credit'].includes(a.type))||(a.accent!==undefined&&!/^#[0-9a-f]{6}$/i.test(a.accent))||['minimum','apr','limit'].some(k=>a[k]!==undefined&&!amount(a[k]))))return false
   if(data.transactions.some(t=>!account(t.accountId)||!amount(t.amount)||!date(t.date)||(t.kind!==undefined&&!['income','purchase','transfer','refund'].includes(t.kind))||(t.subcategory!==undefined&&typeof t.subcategory!=='string')||(t.toAccountId!==undefined&&t.toAccountId!==''&&(!account(t.toAccountId)||t.kind!=='transfer'||account(t.toAccountId).type==='credit'||t.toAccountId===t.accountId))||(t.transferPurpose!==undefined&&!['Savings contribution','Investment contribution','Account transfer','Other transfer'].includes(t.transferPurpose))))return false
+  if(data.transactions.some(t=>t.originalTransactionId&&!data.transactions.some(original=>original.id===t.originalTransactionId&&original.kind==='purchase'&&original.accountId===t.accountId)))return false
   if(data.transactions.some(t=>t.incomeScheduleId&&(!incomeSchedule(t.incomeScheduleId)||t.kind!=='income'||!calendarDate(t.scheduledIncomeDate))))return false
   if(data.payments.some(p=>!account(p.bankId)||!account(p.cardId)||!amount(p.amount)||!date(p.date)||(account(p.bankId)?.type==='credit')||(account(p.cardId)?.type&&account(p.cardId).type!=='credit')))return false
   if(data.bills.some(b=>!b.name||!amount(b.amount)||(b.accountId&&!account(b.accountId))||(b.frequency&&!['monthly','annual'].includes(b.frequency))||(b.subcategory!==undefined&&typeof b.subcategory!=='string')))return false

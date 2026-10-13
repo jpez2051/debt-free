@@ -7,7 +7,7 @@ test('v0.6.0 starts new browsers empty and keeps reporting state in the app',asy
   assert.match(app,/accounts:\[\]/)
   assert.match(app,/transactions:\[\]/)
   assert.match(app,/\[reportPeriod,setReportPeriod\]=useState\('month'\)/)
-  assert.match(app,/filterByReportingPeriod\(data\.transactions,reportPeriod\)/)
+  assert.match(app,/filterByReportingPeriod\(data\.transactions\.filter\(t=>t.status!=='pending'\),reportPeriod\)/)
   const modal=await readFile(new URL('../src/Modal.jsx',import.meta.url),'utf8')
   assert.match(modal,/role="dialog" aria-modal="true"/)
   assert.match(modal,/aria-label="Close dialog"/)

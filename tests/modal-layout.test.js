@@ -27,5 +27,5 @@ test('dialog sizing follows the visual viewport and cleans up its listeners',asy
   }
   assert.match(css,/--dialog-viewport-height,100dvh/)
   assert.match(css,/safe-area-inset-bottom/)
-  assert.match(modal,/root.inert=wasInert/)
+  assert.match(modal,/root.inert=originalInert/)
 })
