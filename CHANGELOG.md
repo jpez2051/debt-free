@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.14.1 — Consistent temporary-boost controls
+
+- Give the temporary-boost amount and month inputs matching heights, padding, borders, focus indicators and a two-column desktop / one-column phone layout. Reuse shared field styling outside dialogs.
+- Clarify that the boost is extra each month, reject fractional/invalid month counts and invalid currency precision, and withhold fictitious time/interest savings when the original plan has no payoff date.
+- Extract the scenario into a focused component/helper, add regression coverage and a synthetic multi-page UI review fixture. Record newly identified product risks separately; no live financial records or Firebase recovery behavior are changed.
+
 ## v0.14.0 — Bill clarity and safer records
 
 - Share one bill/card obligation projection across forecasts and reserves. Preserve missing intervening bill months, include same-day payday dues conservatively, and avoid double-reserving pending repayments.

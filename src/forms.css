@@ -1,0 +1,27 @@
+/* Shared fields outside dialogs must have the same geometry as dialog controls. */
+.field > input:not([type="checkbox"]):not([type="radio"]),
+.field > select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--theme-border-strong, #2a4156);
+  border-radius: 11px;
+  background: var(--theme-bg-soft, #07131f);
+  color: var(--theme-text, #eaf1f8);
+  font-size: 16px;
+}
+.field { min-width: 0; }
+.field > .money-input { min-width: 0; min-height: 50px; }
+.field > .money-input input { min-width: 0; height: 48px; margin: 0; padding: 12px 8px; font-size: 16px; }
+.field > input:focus-visible, .field > select:focus-visible, .field > .money-input:focus-within {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+.field > .money-input input:focus-visible { outline: 0; }
+.payoff-scenario .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.payoff-scenario .field { margin-top: 8px; font-size: 1rem; color: var(--theme-text, #eaf1f8); }
+.payoff-scenario #temporary-boost-help { font-size: .85rem; margin-top: 14px; }
+@media (max-width: 600px) { .payoff-scenario .form-row { grid-template-columns: minmax(0, 1fr); } }
