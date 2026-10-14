@@ -8,6 +8,10 @@ The supplied screenshot's field mismatch is fixed in v0.14.1. Both temporary-boo
 
 ## New correctness risks — resolve first
 
+### Resolution in v0.14.2
+
+The four correctness risks below are addressed with focused regression tests: positive debt and card credits are separate; cadence changes preserve schedule segments and use a new effective date/first-charge anchor; full refunds reverse original split categories while partial refunds require returned-item allocations; and payday confirmation edits an existing pending deposit instead of creating another. Ambiguous legacy partial refunds and multiple pending deposits require explicit review rather than guesses. Tests use synthetic records, including reopening after missed bill months; no live Firebase records were rewritten. The other product/UI recommendations below remain separate future work, and no actual-phone visual testing is claimed.
+
 ### 1. A credit on one card offsets debt on a different card in the dashboard
 
 Reproduced: one card owes $900 and another has a $100 credit. Dashboard card debt sums to $800, but the payoff model correctly still has $900 to eliminate. The credit cannot automatically pay the other issuer. Overall utilization is affected by the same signed aggregation.

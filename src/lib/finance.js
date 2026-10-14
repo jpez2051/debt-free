@@ -1,5 +1,7 @@
 import { categorizeSpendingEntry, TRANSFER_PURPOSES } from './categories.js'
+import { allocateRefund, refundReportingParts } from './refundAllocation.js'
 import { expandSplits, validateSplits } from './splitSpending.js'
+import { amendedBillSchedule, billCadenceChange, billScheduleAt } from './billSchedule.js'
 
 // Money is calculated in integer cents; dates identifying obligations are local calendar dates.
 export const cents = value => Math.round(Number(value || 0) * 100)
@@ -15,8 +17,8 @@ export function dueInMonth(year, month, day) {
 }
 export function nextBillDate(date, bill) {
   const d = new Date(`${date}T12:00:00`)
-  const annualDay=calendarDate(bill.nextDueDate)?new Date(`${bill.nextDueDate}T12:00:00`).getDate():d.getDate()
-  return dueInMonth(d.getFullYear()+(bill.frequency==='annual'?1:0),d.getMonth()+(bill.frequency==='annual'?0:1),bill.frequency==='annual'?annualDay:bill.dueDay||d.getDate())
+  const annualDay=new Date(`${bill.recurrenceAnchorDate||bill.nextDueDate||date}T12:00:00`).getDate()
+  return dueInMonth(d.getFullYear()+(bill.frequency==='annual'?1:0),bill.frequency==='annual'?new Date(`${bill.recurrenceAnchorDate||bill.nextDueDate||date}T12:00:00`).getMonth():d.getMonth()+1,bill.frequency==='annual'?annualDay:bill.dueDay||d.getDate())
 }
 export const transactionDay = entry => entry.localDate || localDate(new Date(entry.date))
 const sum = entries => dollars(entries.reduce((total,p)=>total+cents(p.amount),0))
@@ -84,7 +86,7 @@ export function prepareData(source, now = new Date()) {
     if(bill.active===false) continue
     const today=localDate(now),billCycles=data.billCycles.filter(c=>c.billId===bill.id),paidCycleIds=new Set(data.billPayments.filter(p=>p.billId===bill.id&&p.cycleId).map(p=>p.cycleId))
     const protectedFuture=billCycles.filter(c=>c.dueDate>=today&&(c.actualAmount!=null||c.needsReview||paidCycleIds.has(c.id)))
-    const editableFuture=billCycles.filter(c=>c.dueDate>=today&&c.actualAmount==null&&!c.needsReview&&!paidCycleIds.has(c.id))
+    const editableFuture=billCycles.filter(c=>c.dueDate>=today&&(!bill.scheduleEffectiveDate||c.dueDate>=bill.scheduleEffectiveDate)&&c.actualAmount==null&&!c.needsReview&&!paidCycleIds.has(c.id)&&(!c.status||c.status==='normal'))
     if(!protectedFuture.length&&editableFuture.length){
       let expectedDate=calendarDate(bill.nextDueDate)?bill.nextDueDate:dueInMonth(now.getFullYear(),now.getMonth(),bill.dueDay)
       for(let count=0;expectedDate<today&&count<1200;count++)expectedDate=nextBillDate(expectedDate,bill)
@@ -94,6 +96,26 @@ export function prepareData(source, now = new Date()) {
         data.billCycles.push({id:`cycle-${bill.id}-${expectedDate}`,billId:bill.id,dueDate:expectedDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false})
       }
       bill.nextDueDate=expectedDate
+    }
+    if(bill.recurrenceAnchorDate){
+      for(const segment of bill.scheduleHistory||[]){
+        const saved=data.billCycles.filter(c=>c.billId===bill.id&&c.dueDate>=segment.anchorDate&&c.dueDate>=segment.effectiveDate&&c.dueDate<segment.until).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
+        let date=saved?.dueDate||segment.anchorDate
+        const prior={frequency:segment.frequency,dueDay:segment.dueDay,recurrenceAnchorDate:segment.anchorDate}
+        for(let count=0;count<1200&&date<segment.until&&(!bill.cancelFrom||date<bill.cancelFrom);count++){
+          if(date>=segment.effectiveDate&&!data.billCycles.some(c=>c.billId===bill.id&&(c.dueDate===date||segment.frequency==='monthly'&&c.dueDate>=segment.effectiveDate&&c.dueDate<segment.until&&c.dueDate.slice(0,7)===date.slice(0,7))))data.billCycles.push({id:`cycle-${bill.id}-${date}`,billId:bill.id,dueDate:date,expectedAmount:Number(segment.amount),actualAmount:null,needsReview:false})
+          if(date>=today)break
+          date=nextBillDate(date,prior)
+        }
+      }
+      let expectedDate=bill.nextDueDate||bill.recurrenceAnchorDate
+      for(let count=0;count<1200;count++){
+        if(expectedDate>=bill.scheduleEffectiveDate&&(!bill.cancelFrom||expectedDate<bill.cancelFrom)&&!data.billCycles.some(c=>c.billId===bill.id&&(c.dueDate===expectedDate||bill.frequency==='monthly'&&c.dueDate>=bill.scheduleEffectiveDate&&c.dueDate.slice(0,7)===expectedDate.slice(0,7))))data.billCycles.push({id:`cycle-${bill.id}-${expectedDate}`,billId:bill.id,dueDate:expectedDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false})
+        if(expectedDate>=today)break
+        expectedDate=nextBillDate(expectedDate,bill)
+      }
+      bill.nextDueDate=expectedDate
+      continue
     }
     let latest=data.billCycles.filter(c=>c.billId===bill.id).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
     for(let count=0;latest.dueDate<localDate(now)&&count<1200;count++) {
@@ -118,12 +140,13 @@ export function saveRecurringBill(source,form,now=new Date()){
   const data=prepareData(source,now),old=form.id?data.bills.find(b=>b.id===form.id):null,today=localDate(now),requestedDate=form.nextDueDate||today
   if(!calendarDate(requestedDate))throw new Error('Choose a valid next due date.')
   if(form.cancelFrom&&!calendarDate(form.cancelFrom))throw Error('Choose a valid cancellation-effective date.')
-  const item={...old,id:old?.id||crypto.randomUUID(),name:form.name.trim(),amount:dollars(cents(form.amount)),dueDay:new Date(`${requestedDate}T12:00:00`).getDate(),nextDueDate:requestedDate,frequency:form.frequency==='annual'?'annual':'monthly',autopay:Boolean(form.autopay),category:form.category||'Other',subcategory:form.subcategory||'',accountId:form.accountId||'',active:form.active!==false,scheduleStartDate:old?.scheduleStartDate||requestedDate,cancelFrom:form.cancelFrom||''}
+  const item={...old,id:old?.id||crypto.randomUUID(),name:form.name.trim(),amount:dollars(cents(form.amount)),dueDay:old&&!billCadenceChange(old,form)?Number(old.dueDay)||new Date(`${requestedDate}T12:00:00`).getDate():new Date(`${requestedDate}T12:00:00`).getDate(),nextDueDate:requestedDate,frequency:form.frequency==='annual'?'annual':'monthly',autopay:Boolean(form.autopay),category:form.category||'Other',subcategory:form.subcategory||'',accountId:form.accountId||'',active:form.active!==false,...amendedBillSchedule(old,{...form,nextDueDate:requestedDate},data.billCycles,now),cancelFrom:form.cancelFrom||''}
   for(let count=0;item.nextDueDate<today&&count<1200;count++)item.nextDueDate=nextBillDate(item.nextDueDate,item)
   data.bills=old?data.bills.map(b=>b.id===old.id?item:b):[...data.bills,item]
   if(old){
     const paidCycles=new Set(data.billPayments.filter(p=>p.billId===old.id&&p.cycleId).map(p=>p.cycleId))
-    data.billCycles=data.billCycles.filter(c=>c.billId!==old.id||c.dueDate<today||c.actualAmount!=null||paidCycles.has(c.id))
+    const pruneFrom=billCadenceChange(old,form)?item.scheduleEffectiveDate:today
+    data.billCycles=data.billCycles.filter(c=>c.billId!==old.id||c.dueDate<pruneFrom||c.actualAmount!=null||c.needsReview||c.status&&c.status!=='normal'||paidCycles.has(c.id))
     if(!data.billCycles.some(c=>c.billId===old.id&&c.dueDate===item.nextDueDate))data.billCycles.push({id:`cycle-${old.id}-${item.nextDueDate}`,billId:old.id,dueDate:item.nextDueDate,expectedAmount:item.amount,actualAmount:null,needsReview:false})
   }
   return prepareData(data,now)
@@ -210,7 +233,7 @@ export function recordBillPayment(source,form,now=new Date()) {
   if(form.dueDate){
     if(!calendarDate(form.dueDate))throw new Error('Choose the month or due date this bill payment belongs to.')
     cycle=data.billCycles.find(c=>c.billId===bill.id&&c.dueDate===form.dueDate)
-    if(!cycle){cycle={id:crypto.randomUUID(),billId:bill.id,dueDate:form.dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false};data.billCycles.push(cycle)}
+    if(!cycle){cycle={id:crypto.randomUUID(),billId:bill.id,dueDate:form.dueDate,expectedAmount:Number(billScheduleAt(bill,data.billCycles,form.dueDate)?.amount??bill.amount),actualAmount:null,needsReview:false};data.billCycles.push(cycle)}
   }
   if(!cycle||cycle.billId!==bill.id) throw new Error('Choose the month or due date this bill payment belongs to.')
   if(['skipped','waived'].includes(cycle.status))throw new Error('This bill month is skipped or waived. Remove that exception before recording a payment.')
@@ -300,10 +323,14 @@ export function reconcileAccount(source,form,now=new Date()) {
   return data
 }
 export function recordRefund(source,form,now=new Date()) {
-  const data=prepareData(source,now),a=data.accounts.find(a=>a.id===form.accountId),value=amount(form.amount)
+  const data=prepareData(source,now),a=data.accounts.find(a=>a.id===form.accountId),value=amount(form.amount),old=form.id?data.transactions.find(t=>t.id===form.id&&t.kind==='refund'):null
+  if(form.id&&!old)throw Error('This refund no longer exists.')
   if(!a||!form.merchant?.trim()) throw new Error('Choose an account and enter the merchant.')
-  if(form.originalTransactionId){const original=data.transactions.find(t=>t.id===form.originalTransactionId&&t.kind==='purchase'&&t.accountId===a.id);if(!original)throw Error('Choose an original expense on the same account.');const refunded=data.transactions.filter(t=>t.kind==='refund'&&t.originalTransactionId===original.id).reduce((sum,t)=>sum+cents(t.amount),0);if(refunded+cents(value)>cents(original.amount))throw Error('Linked refunds cannot exceed the original expense.');if(form.date<transactionDay(original))throw Error('A refund cannot arrive before its original expense.')}
-  data.transactions.unshift({id:crypto.randomUUID(),status:!form.historical&&form.status==='pending'?'pending':'cleared',originalTransactionId:form.originalTransactionId||'',...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',subcategory:form.subcategory||'',amount:value,historical:Boolean(form.historical)})
+  if(form.originalTransactionId){const original=data.transactions.find(t=>t.id===form.originalTransactionId&&t.kind==='purchase'&&t.accountId===a.id);if(!original)throw Error('Choose an original expense on the same account.');const refunded=data.transactions.filter(t=>t.kind==='refund'&&t.originalTransactionId===original.id&&t.id!==old?.id).reduce((sum,t)=>sum+cents(t.amount),0);if(refunded+cents(value)>cents(original.amount))throw Error('Linked refunds cannot exceed the original expense.');if(form.date<transactionDay(original))throw Error('A refund cannot arrive before its original expense.')}
+  const original=data.transactions.find(t=>t.id===form.originalTransactionId&&t.kind==='purchase'),splits=allocateRefund(data,{...form,amount:value},original)
+  if(old&&!old.historical&&old.status!=='pending')applyTransactionBalances(data,old,-1)
+  data.transactions=data.transactions.filter(t=>t.id!==old?.id)
+  data.transactions.unshift({id:old?.id||crypto.randomUUID(),splits,status:!form.historical&&form.status==='pending'?'pending':'cleared',originalTransactionId:form.originalTransactionId||'',...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',subcategory:form.subcategory||'',amount:value,historical:Boolean(form.historical)})
   if(!form.historical&&form.status!=='pending') changeBalance(data,a.id,(a.type==='credit'?-1:1)*cents(value))
   return data
 }
@@ -331,10 +358,12 @@ export function saveLedgerTransaction(source,form,kind,now=new Date()) {
   if(kind==='transfer'&&!TRANSFER_PURPOSES.includes(form.transferPurpose))throw new Error('Choose what this transfer is for.')
   const incomeSchedule=kind==='income'&&form.incomeScheduleId?data.incomeSchedules.find(item=>item.id===form.incomeScheduleId):null
   if(kind==='income'&&form.incomeScheduleId&&(!incomeSchedule||!calendarDate(form.scheduledIncomeDate)))throw new Error('Choose a valid expected deposit to match this income.')
+  if(incomeSchedule&&(!old||old.incomeScheduleId!==incomeSchedule.id||old.scheduledIncomeDate!==form.scheduledIncomeDate)&&data.transactions.some(t=>t.id!==old?.id&&t.kind==='income'&&t.incomeScheduleId===incomeSchedule.id&&t.scheduledIncomeDate===form.scheduledIncomeDate))throw Error('A deposit is already linked to this payday. Edit or confirm the existing deposit; record any separate actual deposit without linking it to the same payday.')
   if(incomeSchedule&&incomeLinkAheadOfDeposit(form.scheduledIncomeDate,form.date))throw new Error('This deposit is more than a week before the expected payday. Check the date or unlink the expected deposit so a future paycheck is not marked received.')
   if(old&&!old.historical&&old.status!=='pending')applyTransactionBalances(data,old,-1)
   const merchant=kind==='transfer'?(destination?.name||form.merchant).trim():(form.merchant||({income:'Income',purchase:'Expense',refund:'Refund'}[kind])).trim()
   const item={...old,id:old?.id||crypto.randomUUID(),initiatedDate:form.initiatedDate||old?.initiatedDate||'',incomeScheduleId:'',scheduledIncomeDate:'',...dateFields(form.date,now),kind,status:!form.historical&&form.status==='pending'?'pending':'cleared',importedExpense:Boolean(form.importedExpense),categoryReviewed:form.categoryReviewed===true,splits:validateSplits(form.splits,value),accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{}),...(incomeSchedule?{incomeScheduleId:incomeSchedule.id,scheduledIncomeDate:form.scheduledIncomeDate}:{})}
+  for(const refund of data.transactions.filter(t=>t.kind==='refund'&&t.originalTransactionId===item.id))allocateRefund({...data,transactions:data.transactions.map(t=>t.id===item.id?item:t)},{...refund,splits:refundReportingParts({...data,transactions:data.transactions.map(t=>t.id===item.id?item:t)},refund)},item)
   if(!item.historical&&item.status!=='pending')applyTransactionBalances(data,item)
   data.transactions=old?data.transactions.map(t=>t.id===old.id?item:t):[item,...data.transactions]
   return data
@@ -356,5 +385,5 @@ export function removeRecurringPayment(source,id,now=new Date()) {
 }
 
 export function netSpendingEntries(data) {
-  return [...data.transactions.filter(t=>t.status!=='pending'&&(t.kind==='purchase'||t.kind==='refund')).flatMap(t=>expandSplits(categorizeSpendingEntry({...t,amount:t.kind==='refund'?-Number(t.amount):Number(t.amount)}))),...data.billPayments.filter(p=>p.status!=='pending').map(p=>categorizeSpendingEntry({...p,merchant:p.billName,category:p.category||'Other',subcategory:p.subcategory||'',accountId:p.bankId,kind:'purchase'}))]
+  return [...data.transactions.filter(t=>t.status!=='pending'&&(t.kind==='purchase'||t.kind==='refund')).flatMap(t=>expandSplits({...t,...(t.kind==='refund'?{splits:refundReportingParts(data,t)}:{}),amount:t.kind==='refund'?-Number(t.amount):Number(t.amount)}).map(categorizeSpendingEntry)),...data.billPayments.filter(p=>p.status!=='pending').map(p=>categorizeSpendingEntry({...p,merchant:p.billName,category:p.category||'Other',subcategory:p.subcategory||'',accountId:p.bankId,kind:'purchase'}))]
 }

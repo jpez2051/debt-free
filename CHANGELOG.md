@@ -2,6 +2,14 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.14.2 — Separate debt, accurate schedules, refunds and deposits
+
+- Keep positive card debt and card credits separate in dashboard totals and account tiles; credits never offset another card or checking cash.
+- Give bill cadence changes a first-charge anchor, effective date and prior-schedule history. Preserve recorded invoices/payments and project the correct renewal month.
+- Reverse full split refunds against their original categories, require explicit returned-item allocation for partial refunds, enforce category caps and add refund correction controls. Legacy ambiguous partial refunds require review, not guessed allocation.
+- Confirm an existing pending payday deposit by editing its record; reject duplicate schedule links, use its recorded amount in forecasts and require review of ambiguous multiple pending deposits.
+- Add regression tests; existing historical balance effects are not automatically rewritten.
+
 ## v0.14.1 — Consistent temporary-boost controls
 
 - Give the temporary-boost amount and month inputs matching heights, padding, borders, focus indicators and a two-column desktop / one-column phone layout. Reuse shared field styling outside dialogs.

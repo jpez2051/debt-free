@@ -1,6 +1,8 @@
 import { calendarDate, cents, dollars, localDate, trackedObligations, transactionDay } from './finance.js'
 import { checkingObligations } from './obligationProjection.js'
 import { accountBalances } from './accountBalances.js'
+import { depositsForOccurrence } from './incomeConfirmation.js'
+const withPendingDeposit=(data,item)=>{const pending=depositsForOccurrence(data,item.scheduleId,item.date).filter(entry=>entry.status==='pending');return pending.length?{...item,pendingEntries:pending,pendingCount:pending.length,...(pending.length===1?{amount:Number(pending[0].amount),accountId:pending[0].accountId}:{})}:item}
 
 export const INCOME_FREQUENCIES = [
   ['weekly','Weekly'],
@@ -48,13 +50,13 @@ export function scheduleOccurrences(schedule,{from=new Date(),days=30}={}){
 
 export function expectedIncomeOccurrences(data,now=new Date(),days=30){
   const recorded=new Set((data.transactions||[]).filter(t=>t.status!=='pending'&&t.kind==='income'&&t.incomeScheduleId&&calendarDate(t.scheduledIncomeDate)).map(t=>`${t.incomeScheduleId}|${t.scheduledIncomeDate}`))
-  return (data.incomeSchedules||[]).flatMap(schedule=>scheduleOccurrences(schedule,{from:now,days})).filter(item=>!recorded.has(`${item.scheduleId}|${item.date}`)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
+  return (data.incomeSchedules||[]).flatMap(schedule=>scheduleOccurrences(schedule,{from:now,days})).filter(item=>!recorded.has(`${item.scheduleId}|${item.date}`)).map(item=>withPendingDeposit(data,item)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
 }
 
 export function readyIncomeOccurrences(data,now=new Date()){
   const today=localDate(now),lookback=addDays(today,-40)
   const recorded=new Set((data.transactions||[]).filter(t=>t.status!=='pending'&&t.kind==='income'&&t.incomeScheduleId&&calendarDate(t.scheduledIncomeDate)).map(t=>`${t.incomeScheduleId}|${t.scheduledIncomeDate}`))
-  return (data.incomeSchedules||[]).map(schedule=>scheduleOccurrences(schedule,{from:atNoon(lookback),days:40}).filter(item=>item.date<=today).at(-1)).filter(item=>item&&!recorded.has(`${item.scheduleId}|${item.date}`)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
+  return (data.incomeSchedules||[]).map(schedule=>scheduleOccurrences(schedule,{from:atNoon(lookback),days:40}).filter(item=>item.date<=today).at(-1)).filter(item=>item&&!recorded.has(`${item.scheduleId}|${item.date}`)).map(item=>withPendingDeposit(data,item)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name))
 }
 
 export function nextOccurrenceForSchedule(schedule,transactions=[],now=new Date()){
@@ -83,7 +85,7 @@ export function setIncomeScheduleActive(source,id,active){
 
 export function cashFlowForecast(data,now=new Date(),days=30){
   const today=localDate(now),end=addDays(today,days),cashCents=(data.accounts||[]).filter(a=>a.type==='checking').reduce((total,a)=>total+cents(accountBalances(data,a.id).working),0)
-  const income=expectedIncomeOccurrences(data,now,days).filter(item=>(data.accounts||[]).find(account=>account.id===item.accountId)?.type==='checking'),nextIncome=income[0]||null
+  const income=expectedIncomeOccurrences(data,now,days).filter(item=>!(item.pendingCount>1)).filter(item=>(data.accounts||[]).find(account=>account.id===item.accountId)?.type==='checking'),nextIncome=income[0]||null
   const obligations=checkingObligations(data,now,end)
   const beforeNext=nextIncome?obligations.filter(item=>item.dateKey<=nextIncome.date):obligations
   const dueBeforeIncomeCents=beforeNext.reduce((total,item)=>total+cents(item.remaining),0)
