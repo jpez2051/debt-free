@@ -28,6 +28,7 @@ export function validateData(data) {
   if((data.billPayments||[]).some(p=>!account(p.bankId)||!bill(p.billId)||!amount(p.amount)||!date(p.date)||(p.subcategory!==undefined&&typeof p.subcategory!=='string')))return false
   if((data.creditScores||[]).some(s=>!amount(s.score)||Number(s.score)<250||Number(s.score)>900||!date(s.date)))return false
   if((data.cardStatements||[]).some(s=>!account(s.cardId)||account(s.cardId).type!=='credit'||!calendarDate(s.dueDate)||!amount(s.minimum)))return false
+  if((data.cardStatements||[]).some(s=>s.closingDate!==undefined&&s.closingDate!==''&&(!calendarDate(s.closingDate)||s.closingDate>=s.dueDate)))return false
   if((data.cardStatements||[]).some(s=>s.verification!==undefined&&!['issuer-confirmed','estimated','unverified'].includes(s.verification)))return false
   if((data.cardStatements||[]).some(s=>s.supersededBy&&!(data.cardStatements||[]).some(t=>t.id===s.supersededBy&&t.cardId===s.cardId&&t.dueDate>s.dueDate)))return false
   if((data.billCycles||[]).some(c=>!bill(c.billId)||!calendarDate(c.dueDate)||!amount(c.expectedAmount)||(c.actualAmount!=null&&!amount(c.actualAmount))))return false

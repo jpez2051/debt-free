@@ -67,7 +67,7 @@ test('release pipeline preserves ledger edit/delete handlers and routes to exist
   assert.match(activity,/<ActivityList data=\{data\}/)
   assert.match(activity,/renderTransaction=\{t=><ActionRow/)
   assert.match(activity,/onRemove=\{\(\)=>removeTx\(t\)\}/)
-  assert.match(activity,/onEdit=\{t.kind==='refund'\?undefined/)
+  assert.match(activity,/onEdit=\{t.kind==='refund'\?\(\)=>openRefund\(t\)/)
   for(const target of ['debts','bills','accounts'])assert.ok(activity.includes(`setPage('${target}')`))
 })
 test('Activity keeps filters collapsed until needed while retaining matching count and navigation',async()=>{

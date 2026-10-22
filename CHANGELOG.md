@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.14.3 — Find refunds and record statement closing dates
+
+- Put Refund beside Expense, in the phone Add menu and at the top of Activity. Add an Expense-form shortcut and allow direct refund editing in Activity, reusing the same allocation form and balance rules.
+- Preview refund balance effects, including historical and pending entries, without treating refunds as income.
+- Store optional closing dates on individual card statements and collect them alongside the due date and minimum. Show the closing date for the displayed statement, never a stale account-wide date or a guessed next month. A November due date may correctly have an October closing date.
+- Validate closing dates, preserve earlier statements, restore dates when removing a statement and keep managed account dates read-only in Accounts.
+
 ## v0.14.2 — Separate debt, accurate schedules, refunds and deposits
 
 - Keep positive card debt and card credits separate in dashboard totals and account tiles; credits never offset another card or checking cash.

@@ -251,12 +251,14 @@ export function saveStatement(source,form,now=new Date()) {
   if(data.cardStatements.some(s=>s.id!==form.id&&s.cardId===form.cardId&&s.dueDate===form.dueDate)) throw new Error('A statement already exists for this card and due date.')
   if(old&&old.cardId!==form.cardId) throw new Error('A statement cannot be moved to another card.')
   if(old&&old.dueDate.slice(0,7)!==form.dueDate.slice(0,7)&&data.payments.some(p=>p.cardId===old.cardId&&p.statementId===old.id&&p.assignmentStatus==='confirmed')&&form.dueDate!==statementCycleMismatch(old,data.payments))throw new Error('This statement has assigned payments. Keep its original due month and add a separate statement for the next month.')
+  const closingDate=form.closingDate===undefined&&old?.dueDate===form.dueDate?old.closingDate||'':form.closingDate||''
+  if(closingDate&&(!calendarDate(closingDate)||closingDate>=form.dueDate))throw Error('The statement closing date must be a valid date before its payment due date.')
   const verification=form.issuerConfirmed===true?'issuer-confirmed':form.issuerConfirmed===false?'estimated':old?.verification||'unverified'
-  const item={...old,id:old?.id||crypto.randomUUID(),cardId:form.cardId,dueDate:form.dueDate,minimum,needsReview:false,verification}
+  const item={...old,id:old?.id||crypto.randomUUID(),cardId:form.cardId,dueDate:form.dueDate,minimum,closingDate,needsReview:false,verification}
   data.cardStatements=old?data.cardStatements.map(s=>s.id===old.id?item:s):[...data.cardStatements,item]
   if(form.includesPastDue)data.cardStatements=data.cardStatements.map(s=>s.id!==item.id&&s.cardId===item.cardId&&s.dueDate<item.dueDate&&!s.supersededBy&&statementTotals(s,data.payments,now).remaining>0?{...s,supersededBy:item.id}:s)
   const latest=data.cardStatements.filter(s=>s.cardId===form.cardId&&!s.needsReview).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
-  data.accounts=data.accounts.map(a=>a.id===form.cardId?{...a,nextDueDate:latest.dueDate,minimum:latest.minimum}:a)
+  data.accounts=data.accounts.map(a=>a.id===form.cardId?{...a,nextDueDate:latest.dueDate,minimum:latest.minimum,...(a.statementDate!==undefined||latest.closingDate?{statementDate:latest.closingDate||''}:{})}:a)
   return data
 }
 export function repairMovedStatement(source,id,originalMinimum,now=new Date()) {
@@ -281,7 +283,7 @@ export function removeStatement(source,id,now=new Date()) {
   if(data.payments.some(p=>p.statementId===id))throw new Error('Reassign this statement’s payments or leave them unassigned before removing it.')
   data.cardStatements=data.cardStatements.filter(s=>s.id!==id).map(s=>{if(s.supersededBy!==id)return s;const {supersededBy,...rest}=s;return rest})
   const latest=data.cardStatements.filter(s=>s.cardId===statement.cardId).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
-  data.accounts=data.accounts.map(a=>a.id===statement.cardId?{...a,nextDueDate:latest?.dueDate||'',dueDay:0,minimum:latest?.minimum||0}:a)
+  data.accounts=data.accounts.map(a=>a.id===statement.cardId?{...a,nextDueDate:latest?.dueDate||'',dueDay:0,minimum:latest?.minimum||0,...(a.statementDate!==undefined||latest?.closingDate?{statementDate:latest?.closingDate||''}:{})}:a)
   return data
 }
 export function reassignPayment(source,id,targetId,kind,now=new Date()) {
