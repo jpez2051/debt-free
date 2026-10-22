@@ -4,10 +4,20 @@ import { X } from 'lucide-react'
 import { RELEASE_VERSION } from './release.js'
 import './modal.css'
 import { setDirtyForm } from './lib/formDrafts.js'
+import { dialogValidationMessage } from './lib/dialogValidation.js'
 let dialogCount=0,originalInert=false
 const siblingInert=new Map()
 
-export default function Modal({title,onSubmit,close,children,showSave=true,draft={},saveLabel='Save'}) {
+export default function Modal({title,onSubmit,close,children,showSave=true,draft={},saveLabel='Save',error=''}) {
+  const [submitError,setSubmitError]=useState('')
+  const submit=event=>{
+    event.preventDefault()
+    const invalid=dialogValidationMessage(event.currentTarget)
+    setSubmitError(invalid)
+    if(invalid)return
+    if(!onSubmit){if(showSave)setSubmitError('This editor cannot save right now. Close it and reopen the entry.');return}
+    try{Promise.resolve(onSubmit(event)).catch(reason=>setSubmitError(reason?.message||'Could not save. Your form is still open.'))}catch(reason){setSubmitError(reason?.message||'Could not save. Your form is still open.')}
+  }
   const dialogRef=useRef(null),openerRef=useRef(typeof document==='undefined'?null:document.activeElement)
   const [viewport,setViewport]=useState(null)
   const baseline=useRef({title,value:JSON.stringify(draft)})
@@ -41,10 +51,10 @@ export default function Modal({title,onSubmit,close,children,showSave=true,draft
     else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
   }
   const dialog=<div className="modal-backdrop entry-dialog-backdrop" style={viewport?{'--dialog-viewport-height':`${viewport.height}px`,'--dialog-viewport-top':`${viewport.top}px`}:undefined} onMouseDown={event=>{if(event.target===event.currentTarget)requestClose()}}>
-    <form ref={dialogRef} className="modal entry-dialog" role="dialog" aria-modal="true" aria-label={title} onSubmit={onSubmit} onKeyDown={keys}>
+    <form ref={dialogRef} className="modal entry-dialog" role="dialog" aria-modal="true" aria-label={title} noValidate onSubmit={submit} onInput={()=>setSubmitError('')} onKeyDown={keys}>
       <header className="entry-dialog-header"><button type="button" className="close" aria-label="Close dialog" onClick={requestClose}><X/></button><span className="kicker">DEBT FREE v{RELEASE_VERSION}</span><h2>{title}</h2></header>
       <div className="entry-dialog-body">{children}</div>
-      {showSave&&<footer className="entry-dialog-footer">{discarding?<div role="alert"><strong>Discard unfinished entry?</strong><p>Nothing in this form has been recorded yet.</p><button type="button" className="secondary" onClick={()=>setDiscarding(false)}>Keep editing</button><button type="button" className="secondary danger" onClick={close}>Discard entry</button></div>:<><button type="button" className="secondary" onClick={requestClose}>Cancel</button><button type="submit" className="primary submit">{saveLabel}</button></>}</footer>}
+      {showSave&&<footer className="entry-dialog-footer">{discarding?<div role="alert"><strong>Discard unfinished entry?</strong><p>Nothing in this form has been recorded yet.</p><button type="button" className="secondary" onClick={()=>setDiscarding(false)}>Keep editing</button><button type="button" className="secondary danger" onClick={close}>Discard entry</button></div>:<>{(submitError||error)&&<div className="entry-dialog-feedback save-error" role="alert">Not saved: {submitError||error}</div>}<button type="button" className="secondary" onClick={requestClose}>Cancel</button><button type="submit" className="primary submit">{saveLabel}</button></>}</footer>}
     </form>
   </div>
   return typeof document==='undefined'?dialog:createPortal(dialog,document.body)

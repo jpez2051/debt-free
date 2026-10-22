@@ -6,7 +6,8 @@
 .entry-dialog-header h2{margin:8px 38px 0 0}
 .entry-dialog .close{min-width:44px;min-height:44px;display:grid;place-items:center;right:10px;top:10px}
 .entry-dialog-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:8px 24px 18px;scroll-padding-block:16px}
-.entry-dialog-footer{flex:none;display:flex;gap:12px;align-items:center;padding:14px 24px;border-top:1px solid var(--theme-border);background:var(--theme-surface)}
+.entry-dialog-footer{flex:none;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 24px;border-top:1px solid var(--theme-border);background:var(--theme-surface)}
+.entry-dialog-feedback{flex:0 0 100%;margin:0;max-height:25vh;overflow-y:auto}
 .entry-dialog-footer button{min-height:48px;justify-content:center;flex:1}
 .entry-dialog-footer .submit{width:auto;margin:0}
 .entry-dialog-footer>div[role=alert]{width:100%}.entry-dialog-footer>div[role=alert] p{margin:6px 0}.entry-dialog-footer>div[role=alert] button{display:inline-flex;margin:4px 8px 0 0}

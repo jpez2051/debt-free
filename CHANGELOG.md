@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.14.4 — Optional closing dates and visible save feedback
+
+- Remove closing dates from debt summaries and account entry. Keep existing dates in a collapsed Optional statement details section, allow them to be cleared, and show no missing-closing-date messages. Due dates and payment calculations are unchanged.
+- Show statement validation/save errors next to the fixed Save button instead of only below scrolling fields.
+- Explicitly validate dialog fields, focus and scroll to invalid inputs, and report unexpected synchronous/asynchronous submit errors without discarding entered values. Financial validation remains unchanged.
+- Add tests for editing a closing date through the actual statement submit handler, rejected dates preserving the form, and one form/one submit button with visible footer feedback.
+
 ## v0.14.3 — Find refunds and record statement closing dates
 
 - Put Refund beside Expense, in the phone Add menu and at the top of Activity. Add an Expense-form shortcut and allow direct refund editing in Activity, reusing the same allocation form and balance rules.

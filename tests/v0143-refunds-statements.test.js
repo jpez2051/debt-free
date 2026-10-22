@@ -55,7 +55,7 @@ test('refund entry and statement closing dates render through application pipeli
   let App=(await server.ssrLoadModule('/src/App.jsx')).default
   const html=renderToStaticMarkup(React.createElement(App,{initialData:base()}));assert.match(html,/Log refund/);assert.match(html,/Original expense \(optional\)/);assert.match(html,/Already included in my current balance/);assert.match(html,/\$520\.00/)
   page='debts';modal=null;server.moduleGraph.invalidateAll();App=(await server.ssrLoadModule('/src/App.jsx')).default
-  const nov=saveStatement(base(),{cardId:'card',dueDate:'2026-11-20',minimum:30},now),debt=renderToStaticMarkup(React.createElement(App,{initialData:nov}));assert.match(debt,/Closing date <b>Not recorded/)
+  const nov=saveStatement(base(),{cardId:'card',dueDate:'2026-11-20',minimum:30},now),debt=renderToStaticMarkup(React.createElement(App,{initialData:nov}));assert.doesNotMatch(debt,/Closing date <b>|Closing date not recorded|Not recorded/)
   page='dashboard';modal='quickAdd';server.moduleGraph.invalidateAll();App=(await server.ssrLoadModule('/src/App.jsx')).default
   const phone=renderToStaticMarkup(React.createElement(App,{initialData:base()}));assert.match(phone,/quick-add-actions[\s\S]*>Refund<\/button>/)
  }finally{await server.close()}

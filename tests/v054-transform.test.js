@@ -8,9 +8,12 @@ test('the direct app source includes account and card-date controls', async () =
   for (const expected of [
     'currencyPrecision.js',
     'Next payment due',
-    'Statement closing date',
     'Partially paid',
     'cyclePaidAmount',
     'lastPaidDueDate',
   ]) assert.ok(output.includes(expected), `missing ${expected}`)
+  assert.ok(!output.includes('Field label="Statement closing date"'))
+  const statements=await readFile(new URL('../src/ReliabilityCenter.jsx', import.meta.url),'utf8')
+  assert.ok(statements.includes('Optional statement details'))
+  assert.ok(statements.includes('This statement’s closing date (optional)'))
 })
