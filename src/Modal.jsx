@@ -10,6 +10,7 @@ const siblingInert=new Map()
 
 export default function Modal({title,onSubmit,close,children,showSave=true,draft={},saveLabel='Save',error=''}) {
   const [submitError,setSubmitError]=useState('')
+  useEffect(()=>setSubmitError(''),[title])
   const submit=event=>{
     event.preventDefault()
     const invalid=dialogValidationMessage(event.currentTarget)

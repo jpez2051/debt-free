@@ -1,37 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { navigationSnapshot,subscribeNavigation,requestNavigation,navigationGroupForPage } from './lib/navigation.js'
 import { createPortal } from 'react-dom'
 import { BarChart3, Home, Menu, Target, WalletCards, X } from 'lucide-react'
 
 const groups = [
   { id:'home', label:'Home', icon:Home, items:['Dashboard'] },
-  { id:'money', label:'Money', icon:WalletCards, items:['Accounts','Activity'] },
+  { id:'money', label:'Money', icon:WalletCards, items:['Accounts','Activity','Bills'] },
   { id:'plan', label:'Plan', icon:Target, items:['Debts','Payoff Plan'] },
-  { id:'spending', label:'Spending', icon:BarChart3, items:['Spending','Bills'] },
+  { id:'spending', label:'Spending', icon:BarChart3, items:['Spending'] },
   { id:'more', label:'More', icon:Menu, items:['Insights','Settings'] },
 ]
 
 function clickSidebar(label){
   const buttons=[...document.querySelectorAll('.sidebar nav button')]
   const match=buttons.find(b=>b.textContent.trim()===label)
-  match?.click()
+  if(label==='Settings')match?.click();else requestNavigation({Dashboard:'dashboard',Accounts:'accounts',Activity:'transactions',Bills:'bills',Debts:'debts','Payoff Plan':'payoff',Spending:'spending',Insights:'insights'}[label])
 }
 
 export default function AdaptiveNav(){
   const [open,setOpen]=useState(null)
-  const [active,setActive]=useState('home')
+  const current=useSyncExternalStore(subscribeNavigation,navigationSnapshot,navigationSnapshot)
+  const active=navigationGroupForPage(current.page)
   const sheet=useRef(null)
 
-  useEffect(()=>{
-    const observer=new MutationObserver(()=>{
-      const activeButton=document.querySelector('.sidebar nav button.active')
-      const label=activeButton?.textContent?.trim()
-      const group=groups.find(g=>g.items.includes(label))
-      if(group)setActive(group.id)
-    })
-    const nav=document.querySelector('.sidebar nav')
-    if(nav)observer.observe(nav,{subtree:true,attributes:true,attributeFilter:['class']})
-    return()=>observer.disconnect()
-  },[])
+  useEffect(()=>{if(!current.ready)setOpen(null)},[current.ready])
 
   useEffect(()=>{if(!open)return;const opener=document.activeElement;sheet.current?.querySelector('button')?.focus();const close=e=>{if(e.key==='Escape')setOpen(null);if(e.key==='Tab'){const items=[...sheet.current.querySelectorAll('button')],first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}};document.addEventListener('keydown',close);return()=>{document.removeEventListener('keydown',close);opener?.focus?.()}},[open])
 
@@ -51,5 +43,5 @@ export default function AdaptiveNav(){
     </nav>
   </>
 
-  return createPortal(navLayer,document.body)
+  return current.ready?createPortal(navLayer,document.body):null
 }

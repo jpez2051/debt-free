@@ -4,6 +4,7 @@ import CloudApp from './CloudApp'
 import SettingsCenter from './SettingsCenter'
 import AdaptiveNav from './AdaptiveNav'
 import './styles.css'
+import './product-refinements.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

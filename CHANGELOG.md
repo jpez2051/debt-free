@@ -2,6 +2,17 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.15.0 — Clearer money decisions and everyday controls
+
+- Include pending withdrawals in the cash breakdown and show pending card charges without changing posted balances or minimum-payment status.
+- Require an explicit already-included/not-included choice for entries before an account’s opening date. Preserve existing records; apply the guard to expenses, deposits, transfers, card payments and bill/refund editors.
+- Give permanent payoff-extra changes an Apply action, honestly labeled Set presets and failed-save/repeated-click protection. Name the compared strategy and direction of modeled interest differences.
+- Share visible save errors across entry editors. Keep posted/cleared balance terminology consistent.
+- Use shared navigation state, hide navigation outside the workspace and place Bills under Money on mobile.
+- Add calendar-month reporting, stable category colors, real-date credit-score spacing and exact chart value lists.
+- Centralize current field/action/chart styles, remove superseded fixed-nav overrides, and preserve the current light/dark design instead of adding themes.
+- Show the package-sourced version in the pre-JavaScript splash and every cloud loading/sign-in screen, retaining the version in Settings and existing release displays.
+
 ## v0.14.4 — Optional closing dates and visible save feedback
 
 - Remove closing dates from debt summaries and account entry. Keep existing dates in a collapsed Optional statement details section, allow them to be cleared, and show no missing-closing-date messages. Due dates and payment calculations are unchanged.

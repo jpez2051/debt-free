@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Cloud, LogIn, LogOut, Plus, ShieldCheck, Upload } from 'lucide-react'
 import App from './App.jsx'
+import CloudScreen from './CloudScreen.jsx'
 import { prepareData } from './lib/finance.js'
 import { loadState } from './lib/storage.js'
 import { getActiveData, setActiveData, setCloudSession } from './lib/cloudState.js'
@@ -11,7 +12,6 @@ import { hasDirtyForms } from './lib/formDrafts.js'
 import { cloudFingerprint } from './lib/cloudSync.js'
 
 const starter={accounts:[],transactions:[],payments:[],bills:[],billPayments:[],creditScores:[],strategy:'avalanche',extra:0}
-function CloudScreen({children}){return <main className="cloud-screen"><section className="cloud-card"><div className="cloud-mark"><Cloud size={24}/></div>{children}</section></main>}
 export default function CloudApp(){
   const localData=useMemo(()=>loadState(starter),[])
   const hasLegacyRecords=['accounts','transactions','payments','bills','billPayments','creditScores','incomeSchedules'].some(key=>localData[key]?.length)

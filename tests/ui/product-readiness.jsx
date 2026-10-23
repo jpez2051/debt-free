@@ -9,6 +9,7 @@ import { createCloudWorkspace,recoveryStore } from '../../src/lib/cloudRecovery.
 import { cloudFingerprint,CloudConflictError } from '../../src/lib/cloudSync.js'
 import { setCloudSession,setActiveData } from '../../src/lib/cloudState.js'
 import '../../src/styles.css'
+import '../../src/product-refinements.css'
 
 const values=new Map(),storage={get length(){return values.size},key:i=>[...values.keys()][i],getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)}
 const today=localDate(),fixture=prepareData({accounts:[{id:'bank',name:'Test Checking',type:'checking',balance:1000},{id:'card',name:'Test Card',type:'credit',balance:5000,minimum:50,apr:20,nextDueDate:today}],transactions:[],payments:[],bills:[],extra:0})

@@ -7,6 +7,7 @@ import AdaptiveNav from '../../src/AdaptiveNav.jsx'
 import { localDate, prepareData } from '../../src/lib/finance.js'
 import { setCloudSession } from '../../src/lib/cloudState.js'
 import '../../src/styles.css'
+import '../../src/product-refinements.css'
 
 const now=new Date(),today=localDate(now),day=(offset)=>localDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+offset,12)),prior=localDate(new Date(now.getFullYear(),now.getMonth()-1,10,12))
 const data=prepareData({financeVersion:1,accounts:[

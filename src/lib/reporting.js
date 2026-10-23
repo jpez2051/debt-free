@@ -6,6 +6,7 @@ export const REPORTING_PERIODS=[
 
 export function reportingStart(period,now=new Date()){
   if(period==='all')return null
+  if(/^\d{4}-(0[1-9]|1[0-2])$/.test(period||''))return new Date(Number(period.slice(0,4)),Number(period.slice(5,7))-1,1)
   if(period==='30days'){const start=new Date(now);start.setDate(start.getDate()-29);start.setHours(0,0,0,0);return start}
   return new Date(now.getFullYear(),now.getMonth(),1,0,0,0,0)
 }
@@ -14,7 +15,9 @@ export function inReportingPeriod(item,period,now=new Date()){
   const date=new Date(item?.localDate?`${item.localDate}T12:00:00`:item?.date)
   if(Number.isNaN(date.getTime()))return false
   const start=reportingStart(period,now)
-  const end=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999)
+  const calendar=/^\d{4}-(0[1-9]|1[0-2])$/.test(period||'')
+  const todayEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59,999)
+  const end=calendar?new Date(Math.min(todayEnd.getTime(),new Date(Number(period.slice(0,4)),Number(period.slice(5,7)),0,23,59,59,999).getTime())):todayEnd
   return (!start||date>=start)&&date<=end
 }
 

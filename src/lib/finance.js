@@ -1,3 +1,4 @@
+import { assertOpeningBalanceChoice } from './openingBalanceGuard.js'
 import { categorizeSpendingEntry, TRANSFER_PURPOSES } from './categories.js'
 import { allocateRefund, refundReportingParts } from './refundAllocation.js'
 import { expandSplits, validateSplits } from './splitSpending.js'
@@ -210,6 +211,7 @@ function changeBalance(data,id,delta) {
   data.accounts=data.accounts.map(a=>a.id===id?{...a,balance:dollars(cents(a.balance)+delta)}:a)
 }
 export function recordCardPayment(source, form, now=new Date()) {
+  assertOpeningBalanceChoice(source,form)
   const data=prepareData(source,now),card=data.accounts.find(a=>a.id===form.cardId&&a.type==='credit'),bank=data.accounts.find(a=>a.id===form.bankId&&a.type!=='credit'),statement=data.cardStatements.find(s=>s.id===form.statementId&&s.cardId===form.cardId)
   if(!card||!bank||(form.statementId&&!statement)) throw new Error('Choose a cash account and card, and a statement belonging to that card or leave it for review.')
   const value=amount(form.amount),historical=Boolean(form.historical)
@@ -226,6 +228,7 @@ export function removeCardPayment(source,id,now=new Date()) {
   return data
 }
 export function recordBillPayment(source,form,now=new Date()) {
+  assertOpeningBalanceChoice(source,form)
   const data=prepareData(source,now),funding=data.accounts.find(a=>a.id===form.bankId)
   let cycle=data.billCycles.find(c=>c.id===form.cycleId)
   const bill=data.bills.find(b=>b.id===(form.billId||cycle?.billId))
@@ -325,6 +328,7 @@ export function reconcileAccount(source,form,now=new Date()) {
   return data
 }
 export function recordRefund(source,form,now=new Date()) {
+  assertOpeningBalanceChoice(source,form)
   const data=prepareData(source,now),a=data.accounts.find(a=>a.id===form.accountId),value=amount(form.amount),old=form.id?data.transactions.find(t=>t.id===form.id&&t.kind==='refund'):null
   if(form.id&&!old)throw Error('This refund no longer exists.')
   if(!a||!form.merchant?.trim()) throw new Error('Choose an account and enter the merchant.')
@@ -350,6 +354,7 @@ export function incomeLinkAheadOfDeposit(scheduledDate,depositDate){
   return calendarDate(scheduledDate)&&calendarDate(depositDate)&&(Date.parse(scheduledDate)-Date.parse(depositDate))/86400000>7
 }
 export function saveLedgerTransaction(source,form,kind,now=new Date()) {
+  assertOpeningBalanceChoice(source,form)
   const data=prepareData(source,now),account=data.accounts.find(a=>a.id===form.accountId),destination=kind==='transfer'&&form.toAccountId?data.accounts.find(a=>a.id===form.toAccountId):null,value=amount(form.amount),old=data.transactions.find(t=>t.id===form.id)
   if(!account)throw new Error('Choose an account.')
   if(old){const refunds=data.transactions.filter(t=>t.kind==='refund'&&t.originalTransactionId===old.id);if(refunds.length&&(kind!=='purchase'||refunds.some(t=>t.accountId!==account.id||transactionDay(t)<form.date)||refunds.reduce((sum,t)=>sum+cents(t.amount),0)>cents(value)))throw Error('This edit conflicts with linked refunds. Keep their account, date order and original amount valid.')}

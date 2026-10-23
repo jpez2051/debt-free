@@ -1,3 +1,4 @@
+import OpeningBalanceNotice from './OpeningBalanceNotice.jsx'
 import DraftRecovery from './DraftRecovery.jsx'
 import { forgetSavedDraft } from './lib/savedDrafts.js'
 import { useState } from 'react'
@@ -31,7 +32,7 @@ export default function BillPaymentDialog({data,initial,onSave,onClose,onRemove,
     try{const next=saveBillCharge(data,form,now);if(onSave(next)!==false){forgetSavedDraft(onSave,'bill-payment');onClose();}else setError('The correction could not be saved. Check the save warning and try again.')}catch(e){setError(e.message)}
   }
   const entries=data.transactions.filter(t=>['purchase','transfer'].includes(t.kind)&&t.accountId===form.bankId).slice().sort((a,b)=>transactionDay(b).localeCompare(transactionDay(a)))
-  return <AccessibleDialog title={form.id?(credit?'Edit bill charge':'Edit bill payment'):(credit?'Record bill charge':'Record bill payment')} onClose={onClose}><form className="bill-record-form" onSubmit={submit}><DraftRecovery kind="bill-payment" draft={form} onRestore={setForm}/>
+  return <AccessibleDialog error={error} title={form.id?(credit?'Edit bill charge':'Edit bill payment'):(credit?'Record bill charge':'Record bill payment')} onClose={onClose}><form className="bill-record-form" onSubmit={submit}><OpeningBalanceNotice data={data} form={form} onChange={setForm}/><DraftRecovery kind="bill-payment" draft={form} onRestore={setForm}/>
     <label>Bill<select required value={form.billId||''} onChange={e=>{const b=data.bills.find(b=>b.id===e.target.value);if(!b){setForm(f=>({...f,billId:'',dueDate:''}));return}setForm(f=>({...f,billId:b.id,dueDate:billMonthDate(data,b,(f.date||localDate(now)).slice(0,7)),actualAmount:b.amount,confirmActual:false,confirmFuture:false,bankId:f.transactionId?f.bankId:b.accountId||'',amount:f.transactionId?f.amount:b.amount}));setSeparate(false)}}><option value="">Choose bill</option>{data.bills.filter(b=>b.active!==false||b.id===form.billId).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
     {bill&&<label>{bill.frequency==='annual'?'Bill due date':'Bill month'}<input required type={bill.frequency==='annual'?'date':'month'} value={bill.frequency==='annual'?form.dueDate:form.dueDate?.slice(0,7)||''} onInput={e=>field('dueDate',bill.frequency==='annual'?e.target.value:billMonthDate(data,bill,e.target.value))} onChange={e=>field('dueDate',bill.frequency==='annual'?e.target.value:billMonthDate(data,bill,e.target.value))}/></label>}
     <p className="bill-month-confirmation">This records {bill?.frequency==='annual'?`the bill due ${dateLabel(form.dueDate)}`:`the ${monthLabel(form.dueDate)} bill`} · Due {dateLabel(form.dueDate)}.</p>
