@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.15.3 — Prominent card debt and honest balance change
+
+- Put recorded card debt above the dashboard cash-flow section, with separate card credits and pending-charge context.
+- Compare against an actual saved starting snapshot. Start explicitly or with the next saved update; do not invent month-start balances from incomplete historical entries.
+- Show signed, dated increases in red and decreases in green, with arrows and wording. Keep comparisons containing card additions/removals, balance adjustments or corrected/backdated activity neutral and explain why.
+- Preserve snapshots across backups and cloud storage. Allow a confirmed new comparison without changing balances or payments; normal pending-entry clearing counts as activity, and already-included entries never reduce debt twice.
+
 ## v0.15.2 — Account tile text spacing
 
 - Correct balance and metadata selectors to target the tile’s toggle wrapper. Render each balance label, last check, pending amount and opening-date note on its own line with consistent spacing.
