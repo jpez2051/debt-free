@@ -15,7 +15,7 @@ export function createBillPaymentDraft(data,bill,selected,now=new Date()){
 
 export function editBillPaymentDraft(data,payment){
   const cycle=data.billCycles.find(c=>c.id===payment.cycleId)
-  return {id:payment.id,billId:payment.billId,cycleId:payment.cycleId,dueDate:cycle?.dueDate||'',date:transactionDay(payment),amount:payment.amount,bankId:payment.bankId,status:payment.status||'cleared',historical:Boolean(payment.historical),confirmActual:false,actualAmount:cycle?.actualAmount??cycle?.expectedAmount??payment.amount,transactionId:''}
+  return {id:payment.id,billId:payment.billId,cycleId:payment.cycleId,dueDate:cycle?.dueDate||'',date:transactionDay(payment),amount:payment.amount,bankId:payment.bankId,status:payment.status||'cleared',historical:Boolean(payment.historical),confirmActual:false,actualAmount:cycle?.actualAmount??cycle?.expectedAmount??payment.amount,description:payment.description||'',transactionId:''}
 }
 
 // Corrections and conversions run on a copy and are persisted once. Reverse the
@@ -30,7 +30,7 @@ export function saveBillCharge(source,form,now=new Date()){
   if((!previous||data.billCycles.find(c=>c.id===previous.cycleId)?.dueDate!==form.dueDate)&&form.dueDate.slice(0,7)>localDate(now).slice(0,7)&&form.confirmFuture!==true)throw new Error('Confirm that you intend to record this future bill month. Your payment date alone does not choose its month.')
   if(previous)data=removeRecurringPayment(data,previous.id,now)
   if(entry)data=removeLedgerTransaction(data,entry.id,now)
-  const values=entry?{...form,date:transactionDay(entry),amount:entry.amount,bankId:entry.accountId,historical:Boolean(entry.historical),status:entry.status||'cleared'}:form
+  const values=entry?{...form,date:transactionDay(entry),amount:entry.amount,description:entry.description||'',bankId:entry.accountId,historical:Boolean(entry.historical),status:entry.status||'cleared'}:form
   const next=recordBillPayment(data,values,now)
   next.billPayments[0].id=previous?.id||entry?.id||next.billPayments[0].id
   return next

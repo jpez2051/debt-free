@@ -12,7 +12,8 @@ function aliaser(prefix){
 
 export function anonymizeDiagnosticData(source){
   const data=clone(source),accountNames=new Map(),billNames=new Map()
-  const nextMerchant=aliaser('Merchant'),nextIncome=aliaser('Income source'),nextReason=aliaser('Adjustment reason')
+  const nextMerchant=aliaser('Merchant'),nextIncome=aliaser('Income source'),nextReason=aliaser('Adjustment reason'),nextDescription=aliaser('Expense description')
+  const descriptions=item=>Object.fromEntries(['description','note','notes'].filter(key=>typeof item[key]==='string').map(key=>[key,item[key]?nextDescription(item[key]):'']))
   let cash=0,card=0
   data.accounts=(data.accounts||[]).map(account=>{
     const label=account.type==='credit'?`Credit Card ${++card}`:`Cash Account ${++cash}`
@@ -25,9 +26,9 @@ export function anonymizeDiagnosticData(source){
     return {...bill,name:label}
   })
   data.incomeSchedules=(data.incomeSchedules||[]).map(item=>({...item,name:nextIncome(item.name)}))
-  data.transactions=(data.transactions||[]).map(item=>({...item,merchant:item.kind==='income'?nextIncome(item.merchant):item.toAccountId?accountNames.get(item.toAccountId)||'Cash Account unknown':nextMerchant(item.merchant)}))
+  data.transactions=(data.transactions||[]).map(item=>({...item,...descriptions(item),merchant:item.kind==='income'?nextIncome(item.merchant):item.toAccountId?accountNames.get(item.toAccountId)||'Cash Account unknown':nextMerchant(item.merchant)}))
   data.payments=(data.payments||[]).map(item=>({...item,cardName:accountNames.get(item.cardId)||'Credit Card unknown',bankName:accountNames.get(item.bankId)||'Cash Account unknown'}))
-  data.billPayments=(data.billPayments||[]).map(item=>({...item,billName:billNames.get(item.billId)||'Recurring Bill unknown',bankName:accountNames.get(item.bankId)||'Account unknown'}))
+  data.billPayments=(data.billPayments||[]).map(item=>({...item,...descriptions(item),billName:billNames.get(item.billId)||'Recurring Bill unknown',bankName:accountNames.get(item.bankId)||'Account unknown'}))
   data.billCycles=(data.billCycles||[]).map(item=>({...item,...(item.exceptionReason?{exceptionReason:nextReason(item.exceptionReason)}:{})}))
   data.adjustments=(data.adjustments||[]).map(item=>({...item,reason:nextReason(item.reason)}))
   return data

@@ -78,7 +78,7 @@ test('navigation responds to a workspace appearing after sign-in and resets on s
 })
 test('pre-JavaScript splash uses the same package version as Settings',async()=>{
  const html=await readFile(new URL('../index.html',import.meta.url),'utf8'),built=viteConfig.plugins[0].transformIndexHtml(html)
- assert.match(built,new RegExp(`Debt Free</h1><p>v${RELEASE_VERSION.replaceAll('.','\\.')}`));assert.ok(!built.includes('__DEBT_FREE_VERSION__'))
+ assert.match(built,new RegExp(`Opening your financial workspace…</small><p>v${RELEASE_VERSION.replaceAll('.','\\.')}`));assert.ok(!built.includes('__DEBT_FREE_VERSION__'))
  const settings=await readFile(new URL('../src/SettingsCenter.jsx',import.meta.url),'utf8');assert.match(settings,/RELEASE_VERSION/)
 })
 test('refined components render pending money, explicit payoff apply, optional history and version',async()=>{

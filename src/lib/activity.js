@@ -8,7 +8,7 @@ export function activityEntries(data) {
   return [
     ...data.transactions.map(t=>wrap('transaction',t,t.kind||'purchase',[t.accountId,t.toAccountId].filter(Boolean),t.merchant||t.description||'Activity',t.kind==='transfer'?`${name(t.accountId)} → ${t.toAccountId?name(t.toAccountId):t.merchant||'Outside account'} · ${t.transferPurpose||'Other transfer'}`:t.kind==='income'?`${name(t.accountId)} · Income`:`${name(t.accountId)} · ${categoryLabel(t)}`)),
     ...(data.payments||[]).map(p=>wrap('cardPayment',p,'payment',[p.bankId,p.cardId],'Card payment',`${name(p.bankId)} → ${name(p.cardId)}`)),
-    ...(data.billPayments||[]).map(p=>wrap('billPayment',p,(p.fundingType||data.accounts.find(a=>a.id===p.bankId)?.type)==='credit'?'purchase':'payment',[p.bankId],p.billName||data.bills.find(b=>b.id===p.billId)?.name||'Recurring bill',`${name(p.bankId)} · ${categoryLabel(p)}`)),
+    ...(data.billPayments||[]).map(p=>wrap('billPayment',p,(p.fundingType||data.accounts.find(a=>a.id===p.bankId)?.type)==='credit'?'purchase':'payment',[p.bankId],p.billName||data.bills.find(b=>b.id===p.billId)?.name||'Recurring bill',`${name(p.bankId)} · ${categoryLabel(p)}${p.description?` · ${p.description}`:''}`)),
     ...(data.adjustments||[]).map(a=>wrap('adjustment',a,'adjustment',[a.accountId],'Balance adjustment',`${name(a.accountId)} · ${a.reason}`)),
   ].sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id))
 }

@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState,useEffect,useRef } from 'react'
 import { assignCardPayments, transactionDay, cents, dollars } from './lib/finance.js'
 
 const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'})
-export default function PaymentAssignments({data,update}) {
+export default function PaymentAssignments({data,update,reviewRequest}) {
+  const details=useRef(null)
+  useEffect(()=>{if(!reviewRequest)return;setCardId(reviewRequest.cardId);setOnlyUnassigned(true);setSelected([]);setTarget('');setError('');setNotice('');if(details.current){details.current.open=true;details.current.scrollIntoView({block:'start',behavior:'smooth'});details.current.querySelector('summary')?.focus()}},[reviewRequest])
   const cards=data.accounts.filter(a=>a.type==='credit')
   const [cardId,setCardId]=useState(cards[0]?.id||'')
   const [onlyUnassigned,setOnlyUnassigned]=useState(true)
@@ -17,7 +19,7 @@ export default function PaymentAssignments({data,update}) {
     if(update(next)===false)throw new Error('Nothing was saved. Check the browser save warning and try again.')
     setSelected([]);setNotice(`${chosen.length} payment(s) updated. Amounts and balances were not changed.`)
   }catch(e){setError(e.message)}}
-  return <details className="payment-assignments"><summary>Review payment assignments ({data.payments.filter(p=>p.assignmentStatus==='unassigned').length} needing review)</summary>
+  return <details ref={details} className="payment-assignments"><summary>Review payment assignments ({data.payments.filter(p=>p.assignmentStatus==='unassigned').length} needing review)</summary>
     <p>Payments marked Already included are historical/general by default: they remain in Activity and never change current balances again. They do not create dashboard warnings or count toward a minimum unless you explicitly assign them to a statement.</p>
     <p>Select the statement you want a payment counted toward—even when its minimum is already met. That additional amount appears above the minimum for that statement, not the next one. Choose a general card payment only when you do not want to link it to any statement.</p>
     <form onSubmit={submit}>

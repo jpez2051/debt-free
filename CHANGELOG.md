@@ -2,6 +2,13 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.15.1 — Contextual actions and expense descriptions
+
+- Open account-specific reconciliation from expanded tiles for checking, savings and cards. Replace duplicate reconciliation launch rows with a compact adjustment-history disclosure; retain balance review safeguards.
+- Add card-specific statement actions beside debt statuses. New statement forms leave issuer values blank; existing statement reviews and payment-assignment reviews use their own records. Minimum-met badges remain informational.
+- Add optional searchable expense descriptions without creating custom categories. Preserve descriptions during edits, backups and expense-to-bill conversions, and anonymize free text in diagnostic exports.
+- Place the version directly below splash/sign-in introductory text. Use a dedicated inline class to avoid the legacy fixed bottom-corner badge styling. Keep the version in Settings.
+
 ## v0.15.0 — Clearer money decisions and everyday controls
 
 - Include pending withdrawals in the cash breakdown and show pending card charges without changing posted balances or minimum-payment status.

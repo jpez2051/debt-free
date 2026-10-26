@@ -1,3 +1,4 @@
+import {expenseDescription} from './description.js'
 import { assertOpeningBalanceChoice } from './openingBalanceGuard.js'
 import { categorizeSpendingEntry, TRANSFER_PURPOSES } from './categories.js'
 import { allocateRefund, refundReportingParts } from './refundAllocation.js'
@@ -242,7 +243,7 @@ export function recordBillPayment(source,form,now=new Date()) {
   if(['skipped','waived'].includes(cycle.status))throw new Error('This bill month is skipped or waived. Remove that exception before recording a payment.')
   const value=amount(form.amount),historical=Boolean(form.historical)
   if(form.confirmActual) cycle.actualAmount=amount(form.actualAmount,true)
-  const p={id:crypto.randomUUID(),status:!form.historical&&form.status==='pending'?'pending':'cleared',...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
+  const p={id:crypto.randomUUID(),status:!form.historical&&form.status==='pending'?'pending':'cleared',...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,description:expenseDescription(form.description),category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
   if(!historical&&form.status!=='pending') changeBalance(data,funding.id,(funding.type==='credit'?1:-1)*cents(value))
   data.billPayments.unshift(p)
   return data
@@ -336,7 +337,7 @@ export function recordRefund(source,form,now=new Date()) {
   const original=data.transactions.find(t=>t.id===form.originalTransactionId&&t.kind==='purchase'),splits=allocateRefund(data,{...form,amount:value},original)
   if(old&&!old.historical&&old.status!=='pending')applyTransactionBalances(data,old,-1)
   data.transactions=data.transactions.filter(t=>t.id!==old?.id)
-  data.transactions.unshift({id:old?.id||crypto.randomUUID(),splits,status:!form.historical&&form.status==='pending'?'pending':'cleared',originalTransactionId:form.originalTransactionId||'',...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',subcategory:form.subcategory||'',amount:value,historical:Boolean(form.historical)})
+  data.transactions.unshift({id:old?.id||crypto.randomUUID(),description:expenseDescription(form.description===undefined?old?.description:form.description),splits,status:!form.historical&&form.status==='pending'?'pending':'cleared',originalTransactionId:form.originalTransactionId||'',...dateFields(form.date,now),kind:'refund',accountId:a.id,merchant:form.merchant.trim(),category:form.category||'Other',subcategory:form.subcategory||'',amount:value,historical:Boolean(form.historical)})
   if(!form.historical&&form.status!=='pending') changeBalance(data,a.id,(a.type==='credit'?-1:1)*cents(value))
   return data
 }
@@ -369,7 +370,7 @@ export function saveLedgerTransaction(source,form,kind,now=new Date()) {
   if(incomeSchedule&&incomeLinkAheadOfDeposit(form.scheduledIncomeDate,form.date))throw new Error('This deposit is more than a week before the expected payday. Check the date or unlink the expected deposit so a future paycheck is not marked received.')
   if(old&&!old.historical&&old.status!=='pending')applyTransactionBalances(data,old,-1)
   const merchant=kind==='transfer'?(destination?.name||form.merchant).trim():(form.merchant||({income:'Income',purchase:'Expense',refund:'Refund'}[kind])).trim()
-  const item={...old,id:old?.id||crypto.randomUUID(),initiatedDate:form.initiatedDate||old?.initiatedDate||'',incomeScheduleId:'',scheduledIncomeDate:'',...dateFields(form.date,now),kind,status:!form.historical&&form.status==='pending'?'pending':'cleared',importedExpense:Boolean(form.importedExpense),categoryReviewed:form.categoryReviewed===true,splits:validateSplits(form.splits,value),accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{}),...(incomeSchedule?{incomeScheduleId:incomeSchedule.id,scheduledIncomeDate:form.scheduledIncomeDate}:{})}
+  const item={...old,id:old?.id||crypto.randomUUID(),initiatedDate:form.initiatedDate||old?.initiatedDate||'',incomeScheduleId:'',scheduledIncomeDate:'',...dateFields(form.date,now),kind,status:!form.historical&&form.status==='pending'?'pending':'cleared',importedExpense:Boolean(form.importedExpense),categoryReviewed:form.categoryReviewed===true,description:expenseDescription(form.description===undefined?old?.description:form.description),splits:validateSplits(form.splits,value),accountId:account.id,merchant,amount:value,category:kind==='income'?'Income':kind==='transfer'?'Transfer':form.category||'Other',subcategory:['purchase','refund'].includes(kind)?form.subcategory||'':'',historical:Boolean(form.historical),...(kind==='transfer'?{toAccountId:destination?.id||'',transferPurpose:form.transferPurpose}:{}),...(incomeSchedule?{incomeScheduleId:incomeSchedule.id,scheduledIncomeDate:form.scheduledIncomeDate}:{})}
   for(const refund of data.transactions.filter(t=>t.kind==='refund'&&t.originalTransactionId===item.id))allocateRefund({...data,transactions:data.transactions.map(t=>t.id===item.id?item:t)},{...refund,splits:refundReportingParts({...data,transactions:data.transactions.map(t=>t.id===item.id?item:t)},refund)},item)
   if(!item.historical&&item.status!=='pending')applyTransactionBalances(data,item)
   data.transactions=old?data.transactions.map(t=>t.id===old.id?item:t):[item,...data.transactions]
