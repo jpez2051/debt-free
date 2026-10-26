@@ -2,6 +2,10 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.15.2 — Account tile text spacing
+
+- Correct balance and metadata selectors to target the tile’s toggle wrapper. Render each balance label, last check, pending amount and opening-date note on its own line with consistent spacing.
+
 ## v0.15.1 — Contextual actions and expense descriptions
 
 - Open account-specific reconciliation from expanded tiles for checking, savings and cards. Replace duplicate reconciliation launch rows with a compact adjustment-history disclosure; retain balance review safeguards.
