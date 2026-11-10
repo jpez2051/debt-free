@@ -5,6 +5,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { prepareData, recordBillPayment } from '../src/lib/finance.js'
 import { createBillPaymentDraft, editBillPaymentDraft } from '../src/lib/billRecording.js'
+import { saveInstallmentPlan } from '../src/lib/installments.js'
 
 test('Bills presents paid month, corrections and balance preview from real payment records',async()=>{
   const now=new Date(2026,9,9,12),base=prepareData({accounts:[{id:'bank',name:'Checking',type:'checking',balance:100}],transactions:[],payments:[],bills:[{id:'bill',name:'Subscription',amount:3,frequency:'monthly',dueDay:6,nextDueDate:'2026-11-06',active:true,accountId:'bank'}],billCycles:[{id:'oct',billId:'bill',dueDate:'2026-10-06',expectedAmount:3,actualAmount:null}],extra:0},now)
@@ -35,5 +36,15 @@ test('Bills presents paid month, corrections and balance preview from real payme
     assert.match(activity,/>Edit</);assert.match(activity,/>Undo</)
     assert.doesNotMatch(activity,/View in Bills/)
     assert.deepEqual(data,before)
+    assert.match(html,/Track as installment plan/)
+    const plan=saveInstallmentPlan(data,'bill',{balance:72,lastDueDate:'2027-10-06'},now)
+    const planHtml=renderToStaticMarkup(React.createElement(BillsPage,{data:plan,now}))
+    assert.match(planHtml,/\$72\.00 estimated left on plan/)
+    assert.match(planHtml,/Record extra payment/)
+    assert.match(planHtml,/Turn off tracking/)
+    const extra=createBillPaymentDraft(plan,plan.bills[0],{installmentExtra:true},now)
+    const extraHtml=renderToStaticMarkup(React.createElement(BillPaymentDialog,{data:plan,now,initial:extra}))
+    assert.match(extraHtml,/Installment balance only/)
+    assert.doesNotMatch(extraHtml,/type="month"/)
   }finally{await server.close()}
 })

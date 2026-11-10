@@ -13,6 +13,7 @@
 .bill-card-summary:hover{background:var(--theme-bg)}
 .bill-card-summary:focus-visible{outline-offset:-4px}
 .bill-card-content{padding:18px 20px 20px;border-top:1px solid var(--theme-border)}
+.bill-installment-panel{padding:14px;margin-bottom:16px;border:1px solid var(--theme-border);border-radius:14px;background:var(--theme-bg)}
 @media(max-width:600px){
   .bills-page .bill-card-summary{padding:16px;gap:10px;grid-template-columns:minmax(0,1fr) auto 12px}
   .bill-card-summary .bill-status{font-size:.85rem}

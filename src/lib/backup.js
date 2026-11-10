@@ -1,3 +1,4 @@
+import { validInstallmentPlan } from './installments.js'
 import { calendarDate } from './finance.js'
 
 export function validateData(data) {
@@ -17,7 +18,8 @@ export function validateData(data) {
   if(data.transactions.some(t=>t.splits!==undefined&&(!Array.isArray(t.splits)||t.splits.length>20||t.splits.some(s=>!s||typeof s.category!=='string'||!s.category||!amount(s.amount)||Number(s.amount)<=0)||t.splits.length&&Math.round(Number(t.amount)*100)!==t.splits.reduce((sum,s)=>sum+Math.round(Number(s.amount)*100),0))))return false
   if((data.billCycles||[]).some(c=>c.status!==undefined&&!['normal','skipped','waived'].includes(c.status)))return false
   if(data.bills.some(b=>['recurrenceAnchorDate','scheduleEffectiveDate'].some(key=>b[key]!==undefined&&!calendarDate(b[key]))||b.scheduleHistory!==undefined&&(!Array.isArray(b.scheduleHistory)||b.scheduleHistory.some(s=>!s||!calendarDate(s.anchorDate)||!calendarDate(s.effectiveDate)||!calendarDate(s.until)||s.until<=s.effectiveDate||!['monthly','annual'].includes(s.frequency)||!Number.isInteger(s.dueDay)||s.dueDay<1||s.dueDay>31||!amount(s.amount)))))return false
-  if(data.bills.some(b=>b.cancelFrom&&!calendarDate(b.cancelFrom)))return false
+  if(data.bills.some(b=>b.cancelFrom&&!calendarDate(b.cancelFrom)||b.installmentPlan!==undefined&&!validInstallmentPlan(b.installmentPlan)))return false
+  if((data.billPayments||[]).some(p=>p.installmentExtra!==undefined&&(p.installmentExtra!==true||p.cycleId)||p.includedInPlan!==undefined&&(typeof p.includedInPlan!=='string'||!p.includedInPlan)))return false
   if(['transactions','billPayments'].some(key=>(data[key]||[]).some(item=>item.description!==undefined&&(typeof item.description!=='string'||item.description.length>500))))return false
   if(data.debtProgress!==undefined){const p=data.debtProgress;if(!p||p.version!==1||!calendarDate(p.date)||!date(p.capturedAt)||!amount(p.startingDebt)||Math.abs(Number(p.startingDebt)*100-Math.round(Number(p.startingDebt)*100))>0.00001||!Array.isArray(p.reasons)||new Set(p.reasons).size!==p.reasons.length||p.reasons.some(reason=>!['accounts-changed','balance-correction','activity-correction'].includes(reason)))return false}
   const account=id=>data.accounts.find(a=>a.id===id),bill=id=>data.bills.find(b=>b.id===id),incomeSchedule=id=>(data.incomeSchedules||[]).find(item=>item.id===id)

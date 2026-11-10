@@ -8,6 +8,9 @@ export function billMonthDate(data,bill,month){
 }
 
 export function createBillPaymentDraft(data,bill,selected,now=new Date()){
+  if(selected?.installmentExtra){
+    return { billId:bill.id, dueDate:bill.nextDueDate||localDate(now), date:localDate(now), amount:'', bankId:bill.accountId||'', installmentExtra:true, transactionId:'' }
+  }
   const selectedId=typeof selected==='string'?selected:selected?.cycleId||selected?.id
   const cycle=data.billCycles.find(c=>c.id===selectedId&&c.billId===bill.id)||(typeof selected==='object'&&calendarDate(selected?.dueDate)?{id:'',dueDate:selected.dueDate,expectedAmount:billScheduleAt(bill,data.billCycles,selected.dueDate)?.amount??bill.amount,actualAmount:null}:billDisplayCycle(data,bill,now))
   return {billId:bill.id,cycleId:cycle?.id||'',dueDate:cycle?.dueDate||bill.nextDueDate||localDate(now),date:localDate(now),amount:cycle?cycleTotals(cycle,data.billPayments,now).remaining:bill.amount,bankId:bill.accountId||data.accounts[0]?.id||'',historical:false,confirmActual:false,actualAmount:cycle?.actualAmount??cycle?.expectedAmount??bill.amount,transactionId:''}
@@ -15,7 +18,7 @@ export function createBillPaymentDraft(data,bill,selected,now=new Date()){
 
 export function editBillPaymentDraft(data,payment){
   const cycle=data.billCycles.find(c=>c.id===payment.cycleId)
-  return {id:payment.id,billId:payment.billId,cycleId:payment.cycleId,dueDate:cycle?.dueDate||'',date:transactionDay(payment),amount:payment.amount,bankId:payment.bankId,status:payment.status||'cleared',historical:Boolean(payment.historical),confirmActual:false,actualAmount:cycle?.actualAmount??cycle?.expectedAmount??payment.amount,description:payment.description||'',transactionId:''}
+  return {id:payment.id,billId:payment.billId,cycleId:payment.cycleId,dueDate:cycle?.dueDate||billMonthDate(data,data.bills.find(b=>b.id===payment.billId),transactionDay(payment).slice(0,7)),date:transactionDay(payment),amount:payment.amount,bankId:payment.bankId,status:payment.status||'cleared',historical:Boolean(payment.historical),installmentExtra:Boolean(payment.installmentExtra),includedInPlan:payment.includedInPlan||'',confirmActual:false,actualAmount:cycle?.actualAmount??cycle?.expectedAmount??payment.amount,description:payment.description||'',transactionId:''}
 }
 
 // Corrections and conversions run on a copy and are persisted once. Reverse the
@@ -26,8 +29,10 @@ export function saveBillCharge(source,form,now=new Date()){
   if(form.id&&!previous)throw new Error('This charge no longer exists. Close this window and review the latest history.')
   const entry=form.transactionId?data.transactions.find(t=>t.id===form.transactionId):null
   if(form.transactionId&&(!entry||!['purchase','transfer'].includes(entry.kind)))throw new Error('Choose an expense or transfer that is still in Activity.')
-  if(!data.bills.some(b=>b.id===form.billId)||!calendarDate(form.dueDate))throw new Error('Choose a bill and the month or due date it belongs to.')
-  if((!previous||data.billCycles.find(c=>c.id===previous.cycleId)?.dueDate!==form.dueDate)&&form.dueDate.slice(0,7)>localDate(now).slice(0,7)&&form.confirmFuture!==true)throw new Error('Confirm that you intend to record this future bill month. Your payment date alone does not choose its month.')
+  const bill=data.bills.find(b=>b.id===form.billId)
+  if(!bill||(!form.installmentExtra&&!calendarDate(form.dueDate)))throw new Error('Choose a bill and the month or due date it belongs to.')
+  if(form.installmentExtra&&!bill.installmentPlan&&!(previous?.installmentExtra&&previous.billId===bill.id))throw new Error('Set up installment tracking for this bill before recording an extra payment.')
+  if(!form.installmentExtra&&(!previous||data.billCycles.find(c=>c.id===previous.cycleId)?.dueDate!==form.dueDate)&&form.dueDate.slice(0,7)>localDate(now).slice(0,7)&&form.confirmFuture!==true)throw new Error('Confirm that you intend to record this future bill month. Your payment date alone does not choose its month.')
   if(previous)data=removeRecurringPayment(data,previous.id,now)
   if(entry)data=removeLedgerTransaction(data,entry.id,now)
   const values=entry?{...form,date:transactionDay(entry),amount:entry.amount,description:entry.description||'',bankId:entry.accountId,historical:Boolean(entry.historical),status:entry.status||'cleared'}:form

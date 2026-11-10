@@ -2,6 +2,12 @@
 
 All notable Debt Free builds are tracked here.
 
+## v0.15.4 — Reversible installment tracking for bills
+
+- Convert an existing recurring bill into an installment plan without changing its schedule, balances or payment history.
+- Track an estimated remaining balance from a provider snapshot, and record extra payments without marking future bill months paid.
+- Set the last scheduled due date, confirm a provider payoff to stop reminders, or turn off tracking and return to the regular bill schedule.
+
 ## v0.15.3 — Prominent card debt and honest balance change
 
 - Put recorded card debt above the dashboard cash-flow section, with separate card credits and pending-charge context.

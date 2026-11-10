@@ -1,3 +1,4 @@
+import { scheduledBillDate } from './installments.js'
 import {expenseDescription} from './description.js'
 import { assertOpeningBalanceChoice } from './openingBalanceGuard.js'
 import { categorizeSpendingEntry, TRANSFER_PURPOSES } from './categories.js'
@@ -77,7 +78,7 @@ export function prepareData(source, now = new Date()) {
       data.billCycles.push({id:`cycle-${bill.id}-${dueDate}`,billId:bill.id,dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:migrating})
     }
     // Preserve legacy amounts and assignments without pretending we know old invoices.
-    for(const payment of data.billPayments.filter(p=>p.billId===bill.id&&!p.cycleId)) {
+    for(const payment of data.billPayments.filter(p=>p.billId===bill.id&&!p.cycleId&&!p.installmentExtra)) {
       const day=transactionDay(payment),d=new Date(`${day}T12:00:00`)
       let dueDate=bill.frequency==='annual'?(bill.nextDueDate||day):dueInMonth(d.getFullYear(),d.getMonth(),bill.dueDay)
       if(dueDate<day) dueDate=nextBillDate(dueDate,bill)
@@ -85,7 +86,7 @@ export function prepareData(source, now = new Date()) {
       if(!cycle){cycle={id:`cycle-${bill.id}-${dueDate}`,billId:bill.id,dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:true};data.billCycles.push(cycle)}
       payment.cycleId=cycle.id
     }
-    if(bill.active===false) continue
+    if(bill.active===false || bill.installmentPlan?.paidOff) continue
     const today=localDate(now),billCycles=data.billCycles.filter(c=>c.billId===bill.id),paidCycleIds=new Set(data.billPayments.filter(p=>p.billId===bill.id&&p.cycleId).map(p=>p.cycleId))
     const protectedFuture=billCycles.filter(c=>c.dueDate>=today&&(c.actualAmount!=null||c.needsReview||paidCycleIds.has(c.id)))
     const editableFuture=billCycles.filter(c=>c.dueDate>=today&&(!bill.scheduleEffectiveDate||c.dueDate>=bill.scheduleEffectiveDate)&&c.actualAmount==null&&!c.needsReview&&!paidCycleIds.has(c.id)&&(!c.status||c.status==='normal'))
@@ -93,7 +94,7 @@ export function prepareData(source, now = new Date()) {
       let expectedDate=calendarDate(bill.nextDueDate)?bill.nextDueDate:dueInMonth(now.getFullYear(),now.getMonth(),bill.dueDay)
       for(let count=0;expectedDate<today&&count<1200;count++)expectedDate=nextBillDate(expectedDate,bill)
       const synchronized=editableFuture.length===1&&editableFuture[0].dueDate===expectedDate&&cents(editableFuture[0].expectedAmount)===cents(bill.amount)
-      if(!synchronized){
+      if(!synchronized&&scheduledBillDate(bill,expectedDate)){
         const editableIds=new Set(editableFuture.map(c=>c.id));data.billCycles=data.billCycles.filter(c=>!editableIds.has(c.id))
         data.billCycles.push({id:`cycle-${bill.id}-${expectedDate}`,billId:bill.id,dueDate:expectedDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false})
       }
@@ -104,7 +105,7 @@ export function prepareData(source, now = new Date()) {
         const saved=data.billCycles.filter(c=>c.billId===bill.id&&c.dueDate>=segment.anchorDate&&c.dueDate>=segment.effectiveDate&&c.dueDate<segment.until).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
         let date=saved?.dueDate||segment.anchorDate
         const prior={frequency:segment.frequency,dueDay:segment.dueDay,recurrenceAnchorDate:segment.anchorDate}
-        for(let count=0;count<1200&&date<segment.until&&(!bill.cancelFrom||date<bill.cancelFrom);count++){
+        for(let count=0;count<1200&&date<segment.until&&scheduledBillDate(bill,date);count++){
           if(date>=segment.effectiveDate&&!data.billCycles.some(c=>c.billId===bill.id&&(c.dueDate===date||segment.frequency==='monthly'&&c.dueDate>=segment.effectiveDate&&c.dueDate<segment.until&&c.dueDate.slice(0,7)===date.slice(0,7))))data.billCycles.push({id:`cycle-${bill.id}-${date}`,billId:bill.id,dueDate:date,expectedAmount:Number(segment.amount),actualAmount:null,needsReview:false})
           if(date>=today)break
           date=nextBillDate(date,prior)
@@ -112,7 +113,7 @@ export function prepareData(source, now = new Date()) {
       }
       let expectedDate=bill.nextDueDate||bill.recurrenceAnchorDate
       for(let count=0;count<1200;count++){
-        if(expectedDate>=bill.scheduleEffectiveDate&&(!bill.cancelFrom||expectedDate<bill.cancelFrom)&&!data.billCycles.some(c=>c.billId===bill.id&&(c.dueDate===expectedDate||bill.frequency==='monthly'&&c.dueDate>=bill.scheduleEffectiveDate&&c.dueDate.slice(0,7)===expectedDate.slice(0,7))))data.billCycles.push({id:`cycle-${bill.id}-${expectedDate}`,billId:bill.id,dueDate:expectedDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false})
+        if(expectedDate>=bill.scheduleEffectiveDate&&scheduledBillDate(bill,expectedDate)&&!data.billCycles.some(c=>c.billId===bill.id&&(c.dueDate===expectedDate||bill.frequency==='monthly'&&c.dueDate>=bill.scheduleEffectiveDate&&c.dueDate.slice(0,7)===expectedDate.slice(0,7))))data.billCycles.push({id:`cycle-${bill.id}-${expectedDate}`,billId:bill.id,dueDate:expectedDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false})
         if(expectedDate>=today)break
         expectedDate=nextBillDate(expectedDate,bill)
       }
@@ -122,7 +123,7 @@ export function prepareData(source, now = new Date()) {
     let latest=data.billCycles.filter(c=>c.billId===bill.id).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).at(-1)
     for(let count=0;latest.dueDate<localDate(now)&&count<1200;count++) {
       const dueDate=nextBillDate(latest.dueDate,bill)
-      if(bill.cancelFrom&&dueDate>=bill.cancelFrom)break
+      if(!scheduledBillDate(bill,dueDate))break
       latest={id:`cycle-${bill.id}-${dueDate}`,billId:bill.id,dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false}
       data.billCycles.push(latest)
     }
@@ -166,19 +167,20 @@ export function statementTotals(statement, payments, now=new Date()) {
   return {required:statement.minimum,actualPaid,paid:Math.min(statement.minimum,actualPaid),remaining:dollars(Math.max(0,cents(statement.minimum)-cents(actualPaid)))}
 }
 export function cycleTotals(cycle, payments, now=new Date()) {
-  const required=cycle.actualAmount??cycle.expectedAmount,actualPaid=sum(payments.filter(p=>p.cycleId===cycle.id&&posted(p,now)))
+  const required=cycle.actualAmount??cycle.expectedAmount,actualPaid=sum(payments.filter(p=>!p.installmentExtra&&p.cycleId===cycle.id&&posted(p,now)))
   return {required,actualPaid,paid:actualPaid,remaining:['skipped','waived'].includes(cycle.status)?0:dollars(Math.max(0,cents(required)-cents(actualPaid)))}
 }
 export function trackedObligations(data, now=new Date()) {
   const today=localDate(now),find=id=>data.accounts.find(a=>a.id===id)
   const cards=data.cardStatements.filter(s=>!s.supersededBy).map(s=>{const totals=statementTotals(s,data.payments,now);return {...s,...totals,statementId:s.id,id:`card-${s.id}`,kind:'card',name:`${find(s.cardId)?.name||'Card'} minimum`,dueDate:new Date(`${s.dueDate}T12:00:00`),dateKey:s.dueDate}}).filter(s=>s.remaining>0||s.dateKey>=today||s.needsReview)
-  const bills=data.billCycles.filter(c=>{const b=data.bills.find(b=>b.id===c.billId);return !b?.cancelFrom||c.dueDate<b.cancelFrom||c.actualAmount!=null||data.billPayments.some(p=>p.cycleId===c.id)}).map(c=>{const bill=data.bills.find(b=>b.id===c.billId);return {...c,...cycleTotals(c,data.billPayments,now),cycleId:c.id,id:`bill-${c.id}`,kind:'bill',name:bill?.name||'Bill',active:bill?.active!==false,fundingType:find(bill?.accountId)?.type||'unassigned',accountName:find(bill?.accountId)?.name||'Unassigned',dueDate:new Date(`${c.dueDate}T12:00:00`),dateKey:c.dueDate}}).filter(c=>(c.active||c.dateKey<=today)&&(c.remaining>0||c.dateKey>=today||c.needsReview))
+  const bills=data.billCycles.filter(c=>{const b=data.bills.find(b=>b.id===c.billId);return !b || (!b.installmentPlan?.paidOff && (scheduledBillDate(b,c.dueDate)||c.actualAmount!=null||data.billPayments.some(p=>p.cycleId===c.id)))}).map(c=>{const bill=data.bills.find(b=>b.id===c.billId);return {...c,...cycleTotals(c,data.billPayments,now),cycleId:c.id,id:`bill-${c.id}`,kind:'bill',name:bill?.name||'Bill',active:bill?.active!==false,fundingType:find(bill?.accountId)?.type||'unassigned',accountName:find(bill?.accountId)?.name||'Unassigned',dueDate:new Date(`${c.dueDate}T12:00:00`),dateKey:c.dueDate}}).filter(c=>(c.active||c.dateKey<=today)&&(c.remaining>0||c.dateKey>=today||c.needsReview))
   return [...cards,...bills].sort((a,b)=>a.dateKey.localeCompare(b.dateKey)||a.name.localeCompare(b.name))
 }
 // The Bills page should reassure someone that this month's bill was handled,
 // while the dashboard remains focused on future unpaid obligations.
 export function billDisplayCycle(data,bill,now=new Date()) {
-  const today=localDate(now),cycles=(data.billCycles||[]).filter(c=>c.billId===bill.id&&(!bill.cancelFrom||c.dueDate<bill.cancelFrom||c.actualAmount!=null||(data.billPayments||[]).some(p=>p.cycleId===c.id))),totals=cycle=>cycleTotals(cycle,data.billPayments||[],now)
+  if(bill.installmentPlan?.paidOff)return undefined
+  const today=localDate(now),cycles=(data.billCycles||[]).filter(c=>c.billId===bill.id&&(scheduledBillDate(bill,c.dueDate)||c.actualAmount!=null||(data.billPayments||[]).some(p=>p.cycleId===c.id))),totals=cycle=>cycleTotals(cycle,data.billPayments||[],now)
   const overdue=cycles.filter(c=>c.dueDate<today&&totals(c).remaining>0).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]
   if(overdue)return overdue
   if(bill.frequency==='monthly'){
@@ -234,16 +236,21 @@ export function recordBillPayment(source,form,now=new Date()) {
   let cycle=data.billCycles.find(c=>c.id===form.cycleId)
   const bill=data.bills.find(b=>b.id===(form.billId||cycle?.billId))
   if(!bill||!funding) throw new Error('Choose a bill and the account that paid it.')
-  if(form.dueDate){
+  if(!form.installmentExtra&&form.dueDate){
     if(!calendarDate(form.dueDate))throw new Error('Choose the month or due date this bill payment belongs to.')
     cycle=data.billCycles.find(c=>c.billId===bill.id&&c.dueDate===form.dueDate)
     if(!cycle){cycle={id:crypto.randomUUID(),billId:bill.id,dueDate:form.dueDate,expectedAmount:Number(billScheduleAt(bill,data.billCycles,form.dueDate)?.amount??bill.amount),actualAmount:null,needsReview:false};data.billCycles.push(cycle)}
   }
-  if(!cycle||cycle.billId!==bill.id) throw new Error('Choose the month or due date this bill payment belongs to.')
-  if(['skipped','waived'].includes(cycle.status))throw new Error('This bill month is skipped or waived. Remove that exception before recording a payment.')
+  if(!form.installmentExtra&&(!cycle||cycle.billId!==bill.id)) throw new Error('Choose the month or due date this bill payment belongs to.')
+  if(!form.installmentExtra&&['skipped','waived'].includes(cycle.status))throw new Error('This bill month is skipped or waived. Remove that exception before recording a payment.')
   const value=amount(form.amount),historical=Boolean(form.historical)
-  if(form.confirmActual) cycle.actualAmount=amount(form.actualAmount,true)
-  const p={id:crypto.randomUUID(),status:!form.historical&&form.status==='pending'?'pending':'cleared',...dateFields(form.date,now),cycleId:cycle.id,billId:bill.id,billName:bill.name,description:expenseDescription(form.description),category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
+  if(!form.installmentExtra&&form.confirmActual) cycle.actualAmount=amount(form.actualAmount,true)
+  const p={id:crypto.randomUUID(),status:!historical&&form.status==='pending'?'pending':'cleared',...dateFields(form.date,now),cycleId:form.installmentExtra?'':cycle.id,billId:bill.id,billName:bill.name,description:expenseDescription(form.description),category:bill.category||'Other',subcategory:bill.subcategory||'',bankId:funding.id,bankName:funding.name,fundingType:funding.type,amount:value,historical}
+  if(form.installmentExtra) p.installmentExtra=true
+  const plan=bill.installmentPlan
+  if(plan&&form.includedInPlan===plan.id&&transactionDay(p)===plan.date&&p.status!=='pending') {
+    p.includedInPlan=plan.id
+  }
   if(!historical&&form.status!=='pending') changeBalance(data,funding.id,(funding.type==='credit'?1:-1)*cents(value))
   data.billPayments.unshift(p)
   return data
@@ -299,6 +306,7 @@ export function reassignPayment(source,id,targetId,kind,now=new Date()) {
     if(calendarDate(dueDate)&&bill){target={id:crypto.randomUUID(),billId:bill.id,dueDate,expectedAmount:Number(bill.amount),actualAmount:null,needsReview:false};data.billCycles.push(target)}
   }
   if(kind!=='bill'||!p||!target||p.billId!==target.billId) throw new Error('Choose an occurrence belonging to the same bill.')
+  delete p.installmentExtra
   p.cycleId=targetId
   if(String(targetId).startsWith('new:'))p.cycleId=target.id
   return data

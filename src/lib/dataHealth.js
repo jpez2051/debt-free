@@ -32,7 +32,7 @@ export function analyzeDataHealth(data,now=new Date(),{storageFormat=1}={}){
   for(const [key,count] of occurrences)if(count>1){const [billId,dueDate]=key.split('|');issues.push({kind:'bill-cycle',level:'warning',title:`Duplicate bill occurrence for ${data.bills.find(b=>b.id===billId)?.name||'a bill'}`,detail:`${count} occurrences share ${dueDate}. Do not log another payment until these are repaired; balances must be preserved.`})}
 
   const paidCycles=new Set((data.billPayments||[]).map(p=>p.cycleId).filter(Boolean))
-  for(const bill of (data.bills||[]).filter(b=>b.active!==false)){
+  for(const bill of (data.bills||[]).filter(b=>b.active!==false&&!b.installmentPlan?.paidOff)){
     const upcoming=(data.billCycles||[]).filter(c=>c.billId===bill.id&&c.dueDate>=today&&c.actualAmount==null&&!paidCycles.has(c.id)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]
     if(upcoming&&(cents(upcoming.expectedAmount)!==cents(bill.amount)||new Date(`${upcoming.dueDate}T12:00:00`).getDate()!==Number(bill.dueDay)))issues.push({kind:'bill',level:'warning',title:`${bill.name} schedule needs syncing`,detail:`The bill is ${money.format(bill.amount)} around day ${bill.dueDay}, but its next occurrence is ${money.format(upcoming.expectedAmount)} on ${upcoming.dueDate}. Edit and save the bill to synchronize future occurrences.`})
   }
